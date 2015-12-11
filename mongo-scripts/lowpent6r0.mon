@@ -1,0 +1,520 @@
+erase
+expand 1.401
+ctype default
+ltype 0
+ticksize 0 0 0 0
+location 5500 29000 5500 29000
+limits -54. 54. -54. 54.
+lweight 2
+xlabel "East (m)"
+ylabel "North (m)"
+box
+ltype 1
+grid
+ltype 0
+ptype 10 3
+set d2r = pi/180.
+
+set dimen(sedist) = 48
+set dimen(sndist) = 48
+set dimen(szdist) = 48
+
+set dimen(sbedist) = 1728
+set dimen(sbndist) = 1728
+set dimen(sbzdist) = 1728
+
+set sedist = sedist-sedist-1.e6
+set sndist = sndist-sndist-1.e6
+set szdist = szdist-szdist
+set sbedist = sbedist-sbedist-1.e6
+set sbndist = sbndist-sbndist-1.e6
+set sbzdist = sbzdist-sbzdist
+
+set nside = 5
+set var = 0.0, 0.999, 0.001
+set theta = var*2.*pi
+set incx = 2.*pi/5.*1000.
+
+set thetax = theta*1000.
+set thetam5 = (thetax % incx)/1000.
+
+set rmax = 7.
+set sqinc = 2.*rmax/9.33
+set jitter = 0.*sqinc
+
+set side = 2.*rmax*cos(54.*d2r)
+set rmin = rmax*sin(54.*d2r)
+set psep = 2.*rmin+0.5
+set area = side**2/4.*sqrt(5.*(5.+2.*sqrt(5.)))
+set sqarea = (2.*rmax)**2
+set ratarea = sqarea/area
+# ratarea is the relative number of locations to populate on a square grid
+set ssep = 2.*(rmax + side*cos(18.*d2r))+1.5
+
+set dalp = 0.*d2r
+
+set alp0 = -90.*d2r - dalp
+set x0 = 0.
+set y0 = 0.
+
+set alp0_1 = -54.*d2r- dalp
+set alp0_2 = 18.*d2r- dalp
+set alp0_3 = 90.*d2r- dalp
+set alp0_4 = 162.*d2r- dalp
+set alp0_5 = 234.*d2r- dalp
+set x0_1 = psep*cos(-alp0_1)
+set x0_2 = psep*cos(-alp0_2)
+set x0_3 = psep*cos(-alp0_3)
+set x0_4 = psep*cos(-alp0_4)
+set x0_5 = psep*cos(-alp0_5)
+set y0_1 = psep*sin(-alp0_1)
+set y0_2 = psep*sin(-alp0_2)
+set y0_3 = psep*sin(-alp0_3)
+set y0_4 = psep*sin(-alp0_4)
+set y0_5 = psep*sin(-alp0_5)
+
+set salp0_1 = -18.*d2r- dalp
+set salp0_2 = 54.*d2r- dalp
+set salp0_3 = 126.*d2r- dalp
+set salp0_4 = 198.*d2r- dalp
+set salp0_5 = 270.*d2r- dalp
+set sx0_1 = ssep*cos(-salp0_1)
+set sx0_2 = ssep*cos(-salp0_2)
+set sx0_3 = ssep*cos(-salp0_3)
+set sx0_4 = ssep*cos(-salp0_4)
+set sx0_5 = ssep*cos(-salp0_5)
+set sy0_1 = ssep*sin(-salp0_1)
+set sy0_2 = ssep*sin(-salp0_2)
+set sy0_3 = ssep*sin(-salp0_3)
+set sy0_4 = ssep*sin(-salp0_4)
+set sy0_5 = ssep*sin(-salp0_5)
+
+set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+set xd = radp*cos(theta)
+set yd = radp*sin(theta)
+ctype blue
+set xdp = xd*cos(alp0)+yd*sin(alp0) + x0
+set ydp = yd*cos(alp0)-xd*sin(alp0) + y0
+connect xdp ydp 
+
+set xdp = xd*cos(alp0_1)+yd*sin(alp0_1)+x0_1
+set ydp = yd*cos(alp0_1)-xd*sin(alp0_1)+y0_1
+connect xdp ydp 
+set xdp = xd*cos(alp0_2)+yd*sin(alp0_2)+x0_2
+set ydp = yd*cos(alp0_2)-xd*sin(alp0_2)+y0_2
+connect xdp ydp 
+set xdp = xd*cos(alp0_3)+yd*sin(alp0_3)+x0_3
+set ydp = yd*cos(alp0_3)-xd*sin(alp0_3)+y0_3
+connect xdp ydp 
+set xdp = xd*cos(alp0_4)+yd*sin(alp0_4)+x0_4
+set ydp = yd*cos(alp0_4)-xd*sin(alp0_4)+y0_4
+connect xdp ydp 
+set xdp = xd*cos(alp0_5)+yd*sin(alp0_5)+x0_5
+set ydp = yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5
+connect xdp ydp 
+
+
+set random 3
+set one = 1
+
+define ind 0
+define indp 0
+define indx 0
+define indy 0
+
+set alpg = 12.*d2r
+##### 1
+do indx = 0, 15 {
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp = xc*cos(alpg)+yc*sin(alpg)
+        set ycp = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp**2+ycp**2)
+        set thetac = atan2(ycp, xcp)+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        if (rc<0.9*radp) {
+            #print {rc radp thetac thetam5}
+            set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            set sndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            set sbedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            set sbndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            define indb (48+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_1)+ycp*sin(alp0_1)+x0_1
+            set sbndist[$indb] = ycp*cos(alp0_1)-xcp*sin(alp0_1)+y0_1
+            define indb (96+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_2)+ycp*sin(alp0_2)+x0_2
+            set sbndist[$indb] = ycp*cos(alp0_2)-xcp*sin(alp0_2)+y0_2
+            define indb (144+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_3)-ycp*sin(alp0_3)+x0_3
+            set sbndist[$indb] = -ycp*cos(alp0_3)-xcp*sin(alp0_3)+y0_3
+            define indb (192+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_4)+ycp*sin(alp0_4)+x0_4
+            set sbndist[$indb] = ycp*cos(alp0_4)-xcp*sin(alp0_4)+y0_4
+            define indb (240+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_5)+ycp*sin(alp0_5)+x0_5
+            set sbndist[$indb] = ycp*cos(alp0_5)-xcp*sin(alp0_5)+y0_5
+            define ind ($ind + 1)
+        }
+    }
+}
+
+set xdp = xd*cos(alp0)+yd*sin(alp0) + x0 + sx0_1
+set ydp = -(yd*cos(alp0)-xd*sin(alp0) + y0) + sy0_1
+connect xdp ydp 
+
+set xdp = xd*cos(alp0_1)+yd*sin(alp0_1)+x0_1 + sx0_1
+set ydp = -(yd*cos(alp0_1)-xd*sin(alp0_1)+y0_1) + sy0_1
+connect xdp ydp 
+set xdp = xd*cos(alp0_2)+yd*sin(alp0_2)+x0_2 + sx0_1
+set ydp = -(yd*cos(alp0_2)-xd*sin(alp0_2)+y0_2) + sy0_1
+connect xdp ydp 
+set xdp = xd*cos(alp0_3)+yd*sin(alp0_3)+x0_3 + sx0_1
+set ydp = -(yd*cos(alp0_3)-xd*sin(alp0_3)+y0_3) + sy0_1
+connect xdp ydp 
+set xdp = xd*cos(alp0_4)+yd*sin(alp0_4)+x0_4 + sx0_1
+set ydp = -(yd*cos(alp0_4)-xd*sin(alp0_4)+y0_4) + sy0_1
+connect xdp ydp 
+set xdp = xd*cos(alp0_5)+yd*sin(alp0_5)+x0_5 + sx0_1
+set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_1
+connect xdp ydp 
+
+
+set random 4
+set one = 1
+
+define ind 0
+define indp 0
+define indx 0
+define indy 0
+
+set alpg = 20.*d2r
+##### 2
+do indx = 0, 15 {
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp = xc*cos(alpg)+yc*sin(alpg)
+        set ycp = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp**2+ycp**2)
+        set thetac = atan2(ycp, xcp)+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        if (rc<0.9*radp) {
+            #print {rc radp thetac thetam5}
+            #set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            #set sndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            define indb (288+0+$ind)
+            set sbedist[$indb] = xcp*cos(alp0)+ycp*sin(alp0)+x0 + sx0_1
+            set sbndist[$indb] = -(ycp*cos(alp0)-xcp*sin(alp0)+y0) + sy0_1
+            define indb (288+48+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_1)+ycp*sin(alp0_1)+x0_1 + sx0_1
+            set sbndist[$indb] = -(ycp*cos(alp0_1)-xcp*sin(alp0_1)+y0_1) + sy0_1
+            define indb (288+96+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_2)+ycp*sin(alp0_2)+x0_2 + sx0_1
+            set sbndist[$indb] = -(ycp*cos(alp0_2)-xcp*sin(alp0_2)+y0_2) + sy0_1
+            define indb (288+144+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_3)-ycp*sin(alp0_3)+x0_3 + sx0_1
+            set sbndist[$indb] = -(-ycp*cos(alp0_3)-xcp*sin(alp0_3)+y0_3) + sy0_1
+            define indb (288+192+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_4)+ycp*sin(alp0_4)+x0_4 + sx0_1
+            set sbndist[$indb] = -(ycp*cos(alp0_4)-xcp*sin(alp0_4)+y0_4) + sy0_1
+            define indb (288+240+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_5)+ycp*sin(alp0_5)+x0_5 + sx0_1
+            set sbndist[$indb] = -(ycp*cos(alp0_5)-xcp*sin(alp0_5)+y0_5) + sy0_1
+            define ind ($ind + 1)
+        }
+    }
+}
+
+set xdp = xd*cos(alp0)+yd*sin(alp0) + x0 + sx0_2
+set ydp = -(yd*cos(alp0)-xd*sin(alp0) + y0) + sy0_2
+connect xdp ydp 
+
+set xdp = xd*cos(alp0_1)+yd*sin(alp0_1)+x0_1 + sx0_2
+set ydp = -(yd*cos(alp0_1)-xd*sin(alp0_1)+y0_1) + sy0_2
+connect xdp ydp 
+set xdp = xd*cos(alp0_2)+yd*sin(alp0_2)+x0_2 + sx0_2
+set ydp = -(yd*cos(alp0_2)-xd*sin(alp0_2)+y0_2) + sy0_2
+connect xdp ydp 
+set xdp = xd*cos(alp0_3)+yd*sin(alp0_3)+x0_3 + sx0_2
+set ydp = -(yd*cos(alp0_3)-xd*sin(alp0_3)+y0_3) + sy0_2
+connect xdp ydp 
+set xdp = xd*cos(alp0_4)+yd*sin(alp0_4)+x0_4 + sx0_2
+set ydp = -(yd*cos(alp0_4)-xd*sin(alp0_4)+y0_4) + sy0_2
+connect xdp ydp 
+set xdp = xd*cos(alp0_5)+yd*sin(alp0_5)+x0_5 + sx0_2
+set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_2
+connect xdp ydp 
+
+
+set random 6
+set one = 1
+
+define ind 0
+define indp 0
+define indx 0
+define indy 0
+
+set alpg = 24.*d2r
+##### 3
+do indx = 0, 15 {
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp = xc*cos(alpg)+yc*sin(alpg)
+        set ycp = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp**2+ycp**2)
+        set thetac = atan2(ycp, xcp)+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        if (rc<0.9*radp) {
+            #print {rc radp thetac thetam5}
+            #set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            #set sndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            define indb (576+0+$ind)
+            set sbedist[$indb] = xcp*cos(alp0)+ycp*sin(alp0)+x0 + sx0_2
+            set sbndist[$indb] = -(ycp*cos(alp0)-xcp*sin(alp0)+y0) + sy0_2
+            define indb (576+48+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_1)+ycp*sin(alp0_1)+x0_1 + sx0_2
+            set sbndist[$indb] = -(ycp*cos(alp0_1)-xcp*sin(alp0_1)+y0_1) + sy0_2
+            define indb (576+96+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_2)+ycp*sin(alp0_2)+x0_2 + sx0_2
+            set sbndist[$indb] = -(ycp*cos(alp0_2)-xcp*sin(alp0_2)+y0_2) + sy0_2
+            define indb (576+144+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_3)-ycp*sin(alp0_3)+x0_3 + sx0_2
+            set sbndist[$indb] = -(-ycp*cos(alp0_3)-xcp*sin(alp0_3)+y0_3) + sy0_2
+            define indb (576+192+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_4)+ycp*sin(alp0_4)+x0_4 + sx0_2
+            set sbndist[$indb] = -(ycp*cos(alp0_4)-xcp*sin(alp0_4)+y0_4) + sy0_2
+            define indb (576+240+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_5)+ycp*sin(alp0_5)+x0_5 + sx0_2
+            set sbndist[$indb] = -(ycp*cos(alp0_5)-xcp*sin(alp0_5)+y0_5) + sy0_2
+            define ind ($ind + 1)
+        }
+    }
+}
+
+set xdp = xd*cos(alp0)+yd*sin(alp0) + x0 + sx0_3
+set ydp = -(yd*cos(alp0)-xd*sin(alp0) + y0) + sy0_3
+connect xdp ydp 
+
+set xdp = xd*cos(alp0_1)+yd*sin(alp0_1)+x0_1 + sx0_3
+set ydp = -(yd*cos(alp0_1)-xd*sin(alp0_1)+y0_1) + sy0_3
+connect xdp ydp 
+set xdp = xd*cos(alp0_2)+yd*sin(alp0_2)+x0_2 + sx0_3
+set ydp = -(yd*cos(alp0_2)-xd*sin(alp0_2)+y0_2) + sy0_3
+connect xdp ydp 
+set xdp = xd*cos(alp0_3)+yd*sin(alp0_3)+x0_3 + sx0_3
+set ydp = -(yd*cos(alp0_3)-xd*sin(alp0_3)+y0_3) + sy0_3
+connect xdp ydp 
+set xdp = xd*cos(alp0_4)+yd*sin(alp0_4)+x0_4 + sx0_3
+set ydp = -(yd*cos(alp0_4)-xd*sin(alp0_4)+y0_4) + sy0_3
+connect xdp ydp 
+set xdp = xd*cos(alp0_5)+yd*sin(alp0_5)+x0_5 + sx0_3
+set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_3
+connect xdp ydp 
+
+
+set random 7
+set one = 1
+
+define ind 0
+define indp 0
+define indx 0
+define indy 0
+
+set alpg = 34.*d2r
+##### 4
+do indx = 0, 15 {
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp = xc*cos(alpg)+yc*sin(alpg)
+        set ycp = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp**2+ycp**2)
+        set thetac = atan2(ycp, xcp)+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        if (rc<0.9*radp) {
+            #print {rc radp thetac thetam5}
+            #set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            #set sndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            define indb (864+0+$ind)
+            set sbedist[$indb] = xcp*cos(alp0)+ycp*sin(alp0)+x0 + sx0_3
+            set sbndist[$indb] = -(ycp*cos(alp0)-xcp*sin(alp0)+y0) + sy0_3
+            define indb (864+48+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_1)+ycp*sin(alp0_1)+x0_1 + sx0_3
+            set sbndist[$indb] = -(ycp*cos(alp0_1)-xcp*sin(alp0_1)+y0_1) + sy0_3
+            define indb (864+96+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_2)+ycp*sin(alp0_2)+x0_2 + sx0_3
+            set sbndist[$indb] = -(ycp*cos(alp0_2)-xcp*sin(alp0_2)+y0_2) + sy0_3
+            define indb (864+144+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_3)-ycp*sin(alp0_3)+x0_3 + sx0_3
+            set sbndist[$indb] = -(-ycp*cos(alp0_3)-xcp*sin(alp0_3)+y0_3) + sy0_3
+            define indb (864+192+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_4)+ycp*sin(alp0_4)+x0_4 + sx0_3
+            set sbndist[$indb] = -(ycp*cos(alp0_4)-xcp*sin(alp0_4)+y0_4) + sy0_3
+            define indb (864+240+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_5)+ycp*sin(alp0_5)+x0_5 + sx0_3
+            set sbndist[$indb] = -(ycp*cos(alp0_5)-xcp*sin(alp0_5)+y0_5) + sy0_3
+            define ind ($ind + 1)
+        }
+    }
+}
+
+set xdp = xd*cos(alp0)+yd*sin(alp0) + x0 + sx0_4
+set ydp = -(yd*cos(alp0)-xd*sin(alp0) + y0) + sy0_4
+connect xdp ydp 
+
+set xdp = xd*cos(alp0_1)+yd*sin(alp0_1)+x0_1 + sx0_4
+set ydp = -(yd*cos(alp0_1)-xd*sin(alp0_1)+y0_1) + sy0_4
+connect xdp ydp 
+set xdp = xd*cos(alp0_2)+yd*sin(alp0_2)+x0_2 + sx0_4
+set ydp = -(yd*cos(alp0_2)-xd*sin(alp0_2)+y0_2) + sy0_4
+connect xdp ydp 
+set xdp = xd*cos(alp0_3)+yd*sin(alp0_3)+x0_3 + sx0_4
+set ydp = -(yd*cos(alp0_3)-xd*sin(alp0_3)+y0_3) + sy0_4
+connect xdp ydp 
+set xdp = xd*cos(alp0_4)+yd*sin(alp0_4)+x0_4 + sx0_4
+set ydp = -(yd*cos(alp0_4)-xd*sin(alp0_4)+y0_4) + sy0_4
+connect xdp ydp 
+set xdp = xd*cos(alp0_5)+yd*sin(alp0_5)+x0_5 + sx0_4
+set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_4
+connect xdp ydp 
+
+
+set random 9
+set one = 1
+
+define ind 0
+define indp 0
+define indx 0
+define indy 0
+
+set alpg = 42.*d2r
+##### 5
+do indx = 0, 15 {
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp = xc*cos(alpg)+yc*sin(alpg)
+        set ycp = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp**2+ycp**2)
+        set thetac = atan2(ycp, xcp)+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        if (rc<0.9*radp) {
+            #print {rc radp thetac thetam5}
+            #set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            #set sndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            define indb (1152+0+$ind)
+            set sbedist[$indb] = xcp*cos(alp0)+ycp*sin(alp0)+x0 + sx0_4
+            set sbndist[$indb] = -(ycp*cos(alp0)-xcp*sin(alp0)+y0) + sy0_4
+            define indb (1152+48+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_1)+ycp*sin(alp0_1)+x0_1 + sx0_4
+            set sbndist[$indb] = -(ycp*cos(alp0_1)-xcp*sin(alp0_1)+y0_1) + sy0_4
+            define indb (1152+96+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_2)+ycp*sin(alp0_2)+x0_2 + sx0_4
+            set sbndist[$indb] = -(ycp*cos(alp0_2)-xcp*sin(alp0_2)+y0_2) + sy0_4
+            define indb (1152+144+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_3)-ycp*sin(alp0_3)+x0_3 + sx0_4
+            set sbndist[$indb] = -(-ycp*cos(alp0_3)-xcp*sin(alp0_3)+y0_3) + sy0_4
+            define indb (1152+192+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_4)+ycp*sin(alp0_4)+x0_4 + sx0_4
+            set sbndist[$indb] = -(ycp*cos(alp0_4)-xcp*sin(alp0_4)+y0_4) + sy0_4
+            define indb (1152+240+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_5)+ycp*sin(alp0_5)+x0_5 + sx0_4
+            set sbndist[$indb] = -(ycp*cos(alp0_5)-xcp*sin(alp0_5)+y0_5) + sy0_4
+            define ind ($ind + 1)
+        }
+    }
+}
+
+set xdp = xd*cos(alp0)+yd*sin(alp0) + x0 + sx0_5
+set ydp = -(yd*cos(alp0)-xd*sin(alp0) + y0) + sy0_5
+connect xdp ydp 
+
+set xdp = xd*cos(alp0_1)+yd*sin(alp0_1)+x0_1 + sx0_5
+set ydp = -(yd*cos(alp0_1)-xd*sin(alp0_1)+y0_1) + sy0_5
+connect xdp ydp 
+set xdp = xd*cos(alp0_2)+yd*sin(alp0_2)+x0_2 + sx0_5
+set ydp = -(yd*cos(alp0_2)-xd*sin(alp0_2)+y0_2) + sy0_5
+connect xdp ydp 
+set xdp = xd*cos(alp0_3)+yd*sin(alp0_3)+x0_3 + sx0_5
+set ydp = -(yd*cos(alp0_3)-xd*sin(alp0_3)+y0_3) + sy0_5
+connect xdp ydp 
+set xdp = xd*cos(alp0_4)+yd*sin(alp0_4)+x0_4 + sx0_5
+set ydp = -(yd*cos(alp0_4)-xd*sin(alp0_4)+y0_4) + sy0_5
+connect xdp ydp 
+set xdp = xd*cos(alp0_5)+yd*sin(alp0_5)+x0_5 + sx0_5
+set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_5
+connect xdp ydp 
+
+
+set random 12
+set one = 1
+
+define ind 0
+define indp 0
+define indx 0
+define indy 0
+
+set alpg = 57.*d2r
+##### 6
+do indx = 0, 15 {
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp = xc*cos(alpg)+yc*sin(alpg)
+        set ycp = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp**2+ycp**2)
+        set thetac = atan2(ycp, xcp)+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        if (rc<0.9*radp) {
+            #print {rc radp thetac thetam5}
+            #set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
+            #set sndist[$ind] = ycp*cos(alp0)-xcp*sin(alp0)+y0
+            define indb (1440+0+$ind)
+            set sbedist[$indb] = xcp*cos(alp0)+ycp*sin(alp0)+x0 + sx0_5
+            set sbndist[$indb] = -(ycp*cos(alp0)-xcp*sin(alp0)+y0) + sy0_5
+            define indb (1440+48+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_1)+ycp*sin(alp0_1)+x0_1 + sx0_5
+            set sbndist[$indb] = -(ycp*cos(alp0_1)-xcp*sin(alp0_1)+y0_1) + sy0_5
+            define indb (1440+96+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_2)+ycp*sin(alp0_2)+x0_2 + sx0_5
+            set sbndist[$indb] = -(ycp*cos(alp0_2)-xcp*sin(alp0_2)+y0_2) + sy0_5
+            define indb (1440+144+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_3)-ycp*sin(alp0_3)+x0_3 + sx0_5
+            set sbndist[$indb] = -(-ycp*cos(alp0_3)-xcp*sin(alp0_3)+y0_3) + sy0_5
+            define indb (1440+192+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_4)+ycp*sin(alp0_4)+x0_4 + sx0_5
+            set sbndist[$indb] = -(ycp*cos(alp0_4)-xcp*sin(alp0_4)+y0_4) + sy0_5
+            define indb (1440+240+$ind)
+            set sbedist[$indb] = xcp*cos(alp0_5)+ycp*sin(alp0_5)+x0_5 + sx0_5
+            set sbndist[$indb] = -(ycp*cos(alp0_5)-xcp*sin(alp0_5)+y0_5) + sy0_5
+            define ind ($ind + 1)
+        }
+    }
+}
+
+ctype default
+ptype 4 1
+expand 0.75
+lweight 2.5 
+points sbedist sbndist
+
+set sxedist = sbedist*10. + 1025.
+set sxndist = sbndist*10. + 1025.
+set sxzdist = sbzdist + 1.
+
+#print sbfile6r0.ant {sbedist sbndist sbzdist}
+#print sxfile6r0.ant '%5f %10f %10f \n' {sxzdist sxedist sxndist}
