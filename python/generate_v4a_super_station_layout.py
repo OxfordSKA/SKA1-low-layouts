@@ -1,16 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Script to generate ska1-low v4a super-station antenna layouts.
-This is a port of super mongo script(s) written by Robert Braun.
-
-benjamin.mort@oerc.ox.ac.uk [last update: 8/12/2015]
-"""
-
 import numpy
-import matplotlib.pyplot as plt
 from math import pi, cos, sin, radians, sqrt, atan2
 from numpy.random import random
-import sys
+
 
 def generate(super_station_angle, lattice_orientation, sub_station_orientation,
              station_orientation, fract_jitter):

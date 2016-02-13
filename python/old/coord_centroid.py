@@ -1,5 +1,3 @@
-#!venv/bin/python
-
 import numpy
 from os.path import join
 
