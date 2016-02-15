@@ -39,7 +39,7 @@ def gridgen6(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
 
     # Fix seed to study closest match fails (with fixed seed can
     # print problematic indices)
-    seed(2)
+    # seed(2)
 
     r = diameter / 2.0  # Radius
     p = 1.0 / edge_density
@@ -55,7 +55,7 @@ def gridgen6(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
     grid_size += grid_size%2
     grid_cell = float(diameter) / grid_size  # Grid sector cell size
     scale = 1.0 / grid_cell  # Scaling onto the sector grid.
-    check_width = 2
+    check_width = 1
     print('- Station d: %f' % diameter)
     print('- Grid size: %i' % grid_size)
     print('- Min dist: %f' % min_dist)
@@ -90,60 +90,40 @@ def gridgen6(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
             # Generate a trail position
             xt, yt = get_trail_position(r)
             rt = (xt**2 + yt**2)**0.5
+            ant_r = min_dist / (2.0 * norm_pdf(rt, sigma))
 
             # Check if the point is inside the diameter.
-            if rt + (min_dist / 2.0) * scale_max > r:
+            # if rt + ant_r > r:
+            #     num_miss += 1
+            if rt + min_dist / 2.0 > r:
                 num_miss += 1
 
             # Check if min distance is met.
             else:
                 jx, jy = grid_position(xt, yt, scale, r)
-                # jx, jy = grid_position_2(xt, yt, scale, grid_size)
-                # print('==', jx, jy)
                 y0 = max(0, jy - check_width)
                 y1 = min(grid_size, jy + check_width + 1)
                 x0 = max(0, jx - check_width)
                 x1 = min(grid_size, jx + check_width + 1)
-                # print('**', j, '...', y0, y1, x0, x1, grid_size)
                 dmin = diameter  # Set initial min to diameter.
-                rt_max = rt
-                i_d_min = -1
-                if j == 155:
-                    print('-----')
                 for ky in range(y0, y1):
                     for kx in range(x0, x1):
                         if grid_count[kx, ky] > 0:
-                            kh1 = grid_i_start[kx, ky]
-                            for kh in range(grid_count[kx, ky]):
-                                if j == 155:
-                                    print(kh1)
-                                dx = xt - x[kh1]
-                                dy = yt - y[kh1]
-                                # FIXME-Have to use adjusted d_min for radius
-                                # ie... the closest antenna might not be the
-                                # one that we need to worry about..
-                                if (dx**2 + dy**2)**0.5 <= dmin:
-                                    dmin = (dx**2 + dy**2)**0.5
-                                    i_d_min = kh1
-                                    rt_max = max(rt, (x[kh1]**2 + y[kh1]**2)**0.5)
-                                kh1 = grid_next[kh1]
+                            i_other = grid_i_start[kx, ky]
+                            for num_other in range(grid_count[kx, ky]):
+                                dx = xt - x[i_other]
+                                dy = yt - y[i_other]
+                                dr = (dx**2 + dy**2)**0.5
+                                r_other = (x[i_other]**2 + y[i_other]**2)**0.5
+                                ant_r_other = min_dist / (2.0 * norm_pdf(r_other, sigma))
 
-                # This doesnt work as the minimum distance should also take into
-                # account of the minimum distance for the other coordinate.
-                # ie minimum for the neighbour may be bigger than for the
-                # current.
-                # solution: ...
-                # get the largest minimum distance for the nearest neighbour
-                # ie get the max(rt of nearest point, rt) of this point)
-                scaled_min_dist = 1.0 / norm_pdf(rt, sigma)
-                scaled_min_dist_2 = 1.0 / norm_pdf(rt_max, sigma)
-                # print(j, scaled_min_dist, scaled_min_dist_2, scaled_min_dist_2 - scaled_min_dist)
-                # print(j, rt, norm_pdf(rt, sigma), scaled_min_dist, dmin)
+                                if dr - ant_r_other <= dmin:
+                                    dmin = dr - ant_r_other
+                                i_other = grid_next[i_other]
 
-                if dmin >= scaled_min_dist_2 * min_dist:
-                    if j == 155:
-                        print(j, dmin, scaled_min_dist_2 * min_dist, i_d_min)
+                scaled_min_dist_3 = (min_dist / 2.0) / norm_pdf(rt, sigma)
 
+                if dmin >= scaled_min_dist_3:
                     x[j] = xt
                     y[j] = yt
                     if grid_count[jx, jy] == 0:
@@ -152,6 +132,7 @@ def gridgen6(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
                         grid_next[grid_i_end[jx, jy]] = j
                     grid_i_end[jx, jy] = j
                     grid_count[jx, jy] += 1
+                    print(j, num_miss)
                     max_num_miss = max(max_num_miss, num_miss)
                     num_miss = 0
                     done = True
@@ -176,20 +157,48 @@ def gridgen6(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
     return x, y, sigma
 
 if __name__ == '__main__':
+    # FIXME-BM think about relation of area and minimum spacing...
+    # FIXME-BM based on amplitude taper (apodisation) work out how many antennas
+    # FIXME-BM try to fit antenna in largest empty space each time?
+    # FIXME-BM keep putting more antennas until fail ...
+    # are effectively lost. ie:
+    #        round(sum(ant) - sum(ant * weights)) = 256 - 200 == 56
+    # n should equal round(sum(ant * apod. weights))
     n = 200
-    d = 40
-    d_min = 1.2
-    edge_density = 0.1  # w.r.t. centre.
-    x, y, sigma = gridgen6(edge_density, n, d, d_min, n_miss_max=100000)
+    d = 35
+    d_min = 1.5
+    edge_density = 0.5  # w.r.t. centre.
+    num_tries = 5000
+    x, y, sigma = gridgen6(edge_density, n, d, d_min, n_miss_max=num_tries)
     num_points = len(x)
 
     if num_points != n:
         print('did not find enough antennas!')
     else:
+        print('Plotting...')
+        taper_x = numpy.linspace(-d / 2.0, d / 2.0, 20)
+        taper_y = numpy.zeros_like(taper_x)
+        for ix, x_ in enumerate(taper_x):
+            # taper_y[ix] = d_min / (2.0 * norm_pdf(x_, sigma))
+            taper_y[ix] = norm_pdf(x_, sigma)
 
-        # TODO-BM plot with circles of minimum spacing
-        fig = pyplot.figure(figsize=(12, 12))
+        fig = pyplot.figure(figsize=(10, 10))
+        fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,
+                            wspace=0.0, hspace=0.0)
+        ax = fig.add_subplot(111)
+        ax.plot(taper_x, taper_y, '--')
+        pyplot.show()
+
+        fig = pyplot.figure(figsize=(10, 10))
+        fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,
+                            wspace=0.0, hspace=0.0)
+
         ax = fig.add_subplot(111, aspect='equal')
+
+        example_tries_x = -d/2.0 + d * rand(num_tries)
+        example_tries_y = -d/2.0 + d * rand(num_tries)
+        ax.plot(example_tries_x, example_tries_y, 'k+', alpha=0.1)
+
         ax.plot(x, y, '.', color='k', ms=3.0)
         circle = pyplot.Circle((0, 0), d / 2.0, color='k',
                                linestyle='--', fill=False)
@@ -208,24 +217,42 @@ if __name__ == '__main__':
 
             # Min dist radius for this point + that of closest defines
             # defines if antennas overlap.
-            rad_this = (1.0 / norm_pdf(rp, sigma)) * (d_min / 2.0)
-            rad_closest = (1.0 / norm_pdf(ro, sigma)) * (d_min / 2.0)
+            r_ant_this = d_min / (2.0 * norm_pdf(rp, sigma))
+            r_ant_closest = d_min / (2.0 * norm_pdf(ro, sigma))
 
             ox = x[i_min] - xp
             oy = y[i_min] - yp
-            ax.arrow(xp, yp, ox, oy, head_width=0.1, head_length=0.01,
+            ax.arrow(xp, yp, ox, oy, head_width=0.1, head_length=0.05,
                      fc='g', ec='g')
 
             ax.text(xp, yp, '%i' % i, fontsize='x-small')
-            if min_dist >= rad_this + rad_closest:
+            if min_dist >= r_ant_this + r_ant_closest:
                 color = 'b'
             else:
-                print(i, min_dist, rad_this, rad_closest, rad_this + rad_closest)
+                print(i, min_dist, r_ant_this, r_ant_closest,
+                      r_ant_this + r_ant_closest)
                 color = 'r'
 
-            circle = pyplot.Circle((xp, yp), rad_this, color=color,
-                                   fill=False)
+            circle = pyplot.Circle((xp, yp), r_ant_this, color=color,
+                                   fill=False, alpha=0.1)
             ax.add_artist(circle)
+            circle = pyplot.Circle((xp, yp), (d_min / 2.0), color=color,
+                                   fill=True, alpha=0.2)
+            ax.add_artist(circle)
+
+            extent = d_min / 2**0.5
+            xp = xp
+            yp -= extent / 2.0 * 2 ** 0.5
+            angle = 45.0
+            # xp = xp - extent / 2.0
+            # yp = yp - extent / 2.0
+            # angle = 0.0
+            rect = pyplot.Rectangle((xp, yp),
+                                    width=extent, height=extent,
+                                    angle=angle, color=color, linestyle='-',
+                                    fill=True, alpha=0.4)
+            ax.add_artist(rect)
+
         ax.set_title('%i / %i' % (len(x), n))
         ax.set_xlim(-(d / 2.0 + d_min / 2.0), d / 2.0 + d_min / 2.0)
         ax.set_ylim(-(d / 2.0 + d_min / 2.0), d / 2.0 + d_min / 2.0)
