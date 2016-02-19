@@ -130,11 +130,15 @@ set dimen(sgood) = 176
 
 do indx = 0, 15 {
     do indy = 0, 10 {
+        # Generate the lattice
         set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
         set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        # Rotate by -alpg
         set xcp[$ind] = xc*cos(alpg)+yc*sin(alpg)
         set ycp[$ind] = yc*cos(alpg)-xc*sin(alpg)
+        # evaluate radius
         set rc = sqrt(xcp[$ind]**2+ycp[$ind]**2)
+
         set thetac = atan2(ycp[$ind], xcp[$ind])+2.*pi
         set thetax = thetac*1000.
         set thetam5 = (thetax % incx)/1000.
@@ -146,7 +150,7 @@ do indx = 0, 15 {
 sort {sgood xcp ycp}
 
 do ind = 0, 47 {
-    # print {rc radp thetac thetam5}
+    #print {rc radp thetac thetam5}
     set sedist[$ind] = xcp[$ind]*cos(alp0)+ycp[$ind]*sin(alp0)+x0
     set sndist[$ind] = ycp[$ind]*cos(alp0)-xcp[$ind]*sin(alp0)+y0
     set sbedist[$ind] = xcp[$ind]*cos(alp0)+ycp[$ind]*sin(alp0)+x0
@@ -190,6 +194,15 @@ set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_1
 connect xdp ydp 
 
 
+
+
+
+# =============================================================================
+# =============================================================================
+
+
+
+
 set random 5
 set one = 1
 
@@ -201,19 +214,19 @@ define indy 0
 set alpg = 95.*d2r
 
 do indx = 0, 15 {
-do indy = 0, 10 {
-set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
-set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
-set xcp[$ind] = xc*cos(alpg)+yc*sin(alpg)
-set ycp[$ind] = yc*cos(alpg)-xc*sin(alpg)
-set rc = sqrt(xcp[$ind]**2+ycp[$ind]**2)
-set thetac = atan2(ycp[$ind], xcp[$ind])+2.*pi
-set thetax = thetac*1000.
-set thetam5 = (thetax % incx)/1000.
-set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
-set sgood[$ind] = rc/radp
-define ind ($ind + 1)
-}
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp[$ind] = xc*cos(alpg)+yc*sin(alpg)
+        set ycp[$ind] = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp[$ind]**2+ycp[$ind]**2)
+        set thetac = atan2(ycp[$ind], xcp[$ind])+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        set sgood[$ind] = rc/radp
+        define ind ($ind + 1)
+    }
 }
 sort {sgood xcp ycp}
 
@@ -263,6 +276,10 @@ set ydp = -(yd*cos(alp0_5)-xd*sin(alp0_5)+y0_5) + sy0_2
 connect xdp ydp 
 
 
+# =============================================================================
+# =============================================================================
+
+
 set random 11
 set one = 1
 
@@ -274,19 +291,19 @@ define indy 0
 set alpg = 95.*d2r
 
 do indx = 0, 15 {
-do indy = 0, 10 {
-set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
-set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
-set xcp[$ind] = xc*cos(alpg)+yc*sin(alpg)
-set ycp[$ind] = yc*cos(alpg)-xc*sin(alpg)
-set rc = sqrt(xcp[$ind]**2+ycp[$ind]**2)
-set thetac = atan2(ycp[$ind], xcp[$ind])+2.*pi
-set thetax = thetac*1000.
-set thetam5 = (thetax % incx)/1000.
-set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
-set sgood[$ind] = rc/radp
-define ind ($ind + 1)
-}
+    do indy = 0, 10 {
+        set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
+        set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
+        set xcp[$ind] = xc*cos(alpg)+yc*sin(alpg)
+        set ycp[$ind] = yc*cos(alpg)-xc*sin(alpg)
+        set rc = sqrt(xcp[$ind]**2+ycp[$ind]**2)
+        set thetac = atan2(ycp[$ind], xcp[$ind])+2.*pi
+        set thetax = thetac*1000.
+        set thetam5 = (thetax % incx)/1000.
+        set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+        set sgood[$ind] = rc/radp
+        define ind ($ind + 1)
+    }
 }
 sort {sgood xcp ycp}
 

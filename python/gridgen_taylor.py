@@ -5,6 +5,7 @@ from numpy.random import rand, seed
 from math import ceil, log, exp, floor
 import matplotlib.pyplot as pyplot
 from taper_function import taylor_win
+import time
 
 
 def grid_position(x, y, scale, r):
@@ -31,11 +32,7 @@ def taylor_taper(r, w_taylor, r_taylor):
     return w_taylor[ii]
 
 
-def norm_pdf(x, sigma):
-    return exp(-(x**2) / (2.0*sigma**2))
-
-
-def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
+def gridgen_taylor(num_points, diameter, min_dist, sll=-28, n_miss_max=1000):
     """Generate uniform random positions within a specified diameter which
     are no closer than a specified minimum distance.
 
@@ -48,14 +45,9 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
     # print problematic indices)
     # seed(2)
 
-    num_points = 5000
     r = diameter / 2.0  # Radius
-    p = 1.0 / edge_density
-    max_dist = p * min_dist
-    sigma = r / log(p)**0.5
 
-    # sll = -28
-    sll = -21
+    # Initialise taylor taper.
     nbar = int(numpy.ceil(2.0 * (numpy.arccosh(10**(-sll / 20.0)) /
                                  numpy.pi)**2 + 0.5))
     n_taylor = 10000
@@ -65,11 +57,8 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
     r_taylor = numpy.arange(w_taylor.shape[0]) * (diameter / (n_taylor + 1))
     n_taylor = w_taylor.shape[0]
 
-    # scale_max = 1.0 / w_taylor[-1]
-    # scale_max = 1.0 / norm_pdf(r, sigma)
-    # edge_dist = (1.0 / norm_pdf(20, sigma)) * min_dist
-    # print('- Edge dist:', edge_dist)
-    # print('- Area scaling: %f' % (edge_dist**2 / min_dist**2))
+    p = 1.0 / w_taylor[-1]
+    max_dist = p * min_dist
 
     # Grid size and scaling onto the grid
     grid_size = min(100, int(round(float(diameter) / max_dist)))
@@ -77,13 +66,11 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
     grid_cell = float(diameter) / grid_size  # Grid sector cell size
     scale = 1.0 / grid_cell  # Scaling onto the sector grid.
     check_width = 1
-    print('- Station d: %f' % diameter)
-    print('- Grid size: %i' % grid_size)
-    print('- Min dist: %f' % min_dist)
-    print('- Max dist: %f' % max_dist)
-    print('- Sigma: %f' % sigma)
-    print('- Grid cell: %f' % grid_cell)
-    print('- check width: %i' % check_width)
+    # print('- Station d: %f' % diameter)
+    # print('- Grid size: %i' % grid_size)
+    # print('- Min dist: %f' % min_dist)
+    # print('- Max dist: %f' % max_dist)
+    # print('- Grid cell: %f' % grid_cell)
 
     # Pre-allocate coordinate arrays
     x = numpy.zeros(num_points)
@@ -114,16 +101,12 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
             rt = (xt**2 + yt**2)**0.5
 
             # Check if the point is inside the diameter.
-            # if rt + ant_r > r:
-            #     num_miss += 1
             if rt + min_dist / 2.0 > r:
                 num_miss += 1
 
             # Check if min distance is met.
             else:
                 iw = int(round((rt / r) * n_taylor))
-                # print(j, rt, r, n_taylor, iw)
-                # ant_r = min_dist / (2.0 * norm_pdf(rt, sigma))
                 ant_r = min_dist / (2.0 * w_taylor[iw])
 
                 jx, jy = grid_position(xt, yt, scale, r)
@@ -150,7 +133,6 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
 
                 iw = int(round(rt / r * n_taylor))
                 scaled_min_dist_3 = (min_dist / 2.0) / w_taylor[iw]
-                # scaled_min_dist_3 = (min_dist / 2.0) / norm_pdf(rt, sigma)
 
                 if dmin >= scaled_min_dist_3:
                     x[j] = xt
@@ -162,7 +144,6 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
                         grid_next[grid_i_end[jx, jy]] = j
                     grid_i_end[jx, jy] = j
                     grid_count[jx, jy] += 1
-                    # print(j, num_miss)
                     miss_count.append(num_miss)
                     max_num_miss = max(max_num_miss, num_miss)
                     num_miss = 0
@@ -183,53 +164,21 @@ def gridgen9(edge_density, num_points, diameter, min_dist, n_miss_max=1000):
         x = x[0:n]
         y = y[0:n]
 
-    print('- Found %i / %i points [max. misses: %i / %i]' %
-          (n, n_req, max_num_miss, n_miss_max))
+    return x, y, miss_count, w_taylor, r_taylor, n_taylor
 
-    return x, y, sigma, miss_count
 
-if __name__ == '__main__':
-    # FIXME-BM think about relation of area and minimum spacing...
-    # FIXME-BM based on amplitude taper (apodisation) work out how many antennas
-    # FIXME-BM try to fit antenna in largest empty space each time?
-    # FIXME-BM keep putting more antennas until fail ...
-    # TODO-BM for a fixed seed see how number of tries effects numbers of
-    #         antennas placed.
-    # are effectively lost. ie:
-    #        round(sum(ant) - sum(ant * weights)) = 256 - 200 == 56
-    # n should equal round(sum(ant * apod. weights))
-    n = 0
+def main():
+    n = 131
     d = 35.0
     d_min = 1.5
-    edge_density = 0.2  # w.r.t. centre.
-    num_tries = 500000
-    x, y, sigma, miss_count = gridgen9(edge_density, n, d, d_min,
-                                       n_miss_max=num_tries)
+    num_tries = 10000
+    sll = -20
+    x, y, miss_count, w_taylor, r_taylor, n_taylor = \
+        gridgen_taylor(n, d, d_min, sll, num_tries)
+    print(numpy.sort(miss_count)[-2:])
     num_points = len(x)
 
-    sll = -21
-    nbar = int(numpy.ceil(2.0 * (numpy.arccosh(10**(-sll / 20.0)) /
-                                 numpy.pi)**2 + 0.5))
-    n_taylor = 10000
-    w_taylor = taylor_win(n_taylor + 1, nbar, sll)
-    w_taylor /= w_taylor.max()
-    w_taylor = w_taylor[n_taylor/2:]
-    r_taylor = numpy.arange(w_taylor.shape[0]) * (d / (n_taylor + 1))
-    n_taylor = w_taylor.shape[0]
-
     print('Plotting...')
-    taper_x = numpy.linspace(-d / 2.0, d / 2.0, 20)
-    taper_y = numpy.zeros_like(taper_x)
-    for ix, x_ in enumerate(taper_x):
-        # taper_y[ix] = d_min / (2.0 * norm_pdf(x_, sigma))
-        taper_y[ix] = norm_pdf(x_, sigma)
-    # fig = pyplot.figure(figsize=(10, 10))
-    # fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,
-    #                     wspace=0.0, hspace=0.0)
-    # ax = fig.add_subplot(111)
-    # ax.plot(taper_x, taper_y, '--')
-    # pyplot.show()
-
     fig = pyplot.figure(figsize=(10, 10))
     fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95,
                         wspace=0.0, hspace=0.0)
@@ -262,10 +211,8 @@ if __name__ == '__main__':
         # defines if antennas overlap.
         iw = int(round(rp / (d / 2.0) * n_taylor))
         r_ant_this = d_min / (2.0 * w_taylor[iw])
-        # r_ant_this = d_min / (2.0 * norm_pdf(rp, sigma))
         iw = int(round(ro / (d / 2.0) * n_taylor))
         r_ant_closest = d_min / (2.0 * w_taylor[iw])
-        # r_ant_closest = d_min / (2.0 * norm_pdf(ro, sigma))
         ox = x[i_min] - xp
         oy = y[i_min] - yp
         ax.arrow(xp, yp, ox, oy, head_width=0.1, head_length=0.05,
@@ -302,3 +249,30 @@ if __name__ == '__main__':
     ax.set_xlim(-(d / 2.0 + d_min / 2.0), d / 2.0 + d_min / 2.0)
     ax.set_ylim(-(d / 2.0 + d_min / 2.0), d / 2.0 + d_min / 2.0)
     pyplot.show()
+
+
+def main_2():
+    n = 131
+    d = 35.0
+    d_min = 1.5
+    num_tries = 100000
+    sll = -20
+    num_ant = []
+    t1 = time.time()
+    valid = 0
+    for i in range(20):
+        t0 = time.time()
+        seed(i)
+        x, y, mc, _, _, _ = gridgen_taylor(n, d, d_min, sll, num_tries)
+        num_ant.append(len(x))
+        if num_ant[-1] >= 131:
+            valid += 1
+            print(i, num_ant[-1], time.time() - t0, mc[130])
+    print('---')
+    print('mean:', numpy.mean(num_ant))
+    print('num valid:', valid)
+    print('time taken:', time.time() - t1)
+
+if __name__ == '__main__':
+    # main()
+    main_2()

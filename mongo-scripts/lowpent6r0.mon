@@ -123,9 +123,10 @@ define indx 0
 define indy 0
 
 set alpg = 12.*d2r
-##### 1
+##### 1 (station 0 - centre station)
 do indx = 0, 15 {
     do indy = 0, 10 {
+        # Generate the lattice.
         set xc = -1.5*rmax+(($indx+0.5*$indy)*sqinc)+jitter*(2.*(random(one)-0.5))
         set yc = -rmax+($indy*sqinc*sqrt(3.)/2.)+jitter*(2.*(random(one)-0.5))
         set xcp = xc*cos(alpg)+yc*sin(alpg)
@@ -135,6 +136,7 @@ do indx = 0, 15 {
         set thetax = thetac*1000.
         set thetam5 = (thetax % incx)/1000.
         set radp = rmax*cos(pi/5.)/cos(thetam5-pi/5.)
+
         if (rc<0.9*radp) {
             #print {rc radp thetac thetam5}
             set sedist[$ind] = xcp*cos(alp0)+ycp*sin(alp0)+x0
