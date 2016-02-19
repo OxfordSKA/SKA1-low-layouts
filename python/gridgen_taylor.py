@@ -274,5 +274,5 @@ def main_2():
     print('time taken:', time.time() - t1)
 
 if __name__ == '__main__':
-    # main()
+    main()
     main_2()

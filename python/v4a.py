@@ -18,6 +18,7 @@ from math import pi, cos, sin, radians, sqrt, degrees, ceil
 import os
 from os.path import join
 import shutil
+from gridgen_no_taper import gridgen_no_taper
 
 
 def rotate_coords(x, y, angle):
@@ -54,7 +55,7 @@ def generate_lattice(n, inc, lattice_angle):
 def select_antennas(x, y, r_max, num_antennas, angle):
     """Select a number of antennas from points x, y, inside a pentagonal
     area defined by radius r_max, and angle"""
-    num_samples = 100
+    num_samples = 1000
     inc_x = ((2.0 * pi) / 5.0) * num_samples
     theta = numpy.arctan2(y, x) + 2.0 * pi - radians(angle)
     theta_x = theta * num_samples
@@ -64,9 +65,10 @@ def select_antennas(x, y, r_max, num_antennas, angle):
     s_good = rc / rad_p
     sort_idx = numpy.argsort(s_good)
     s_good = s_good[sort_idx]
-    n_ok = numpy.argmax(s_good > 1.0) - 1
+    num_ok = numpy.argmax(s_good > 1.0) - 1
+    assert num_antennas <= num_ok, '%i / %i' % (num_ok, num_antennas)
     if num_antennas < 0:
-        num_antennas = n_ok
+        num_antennas = num_ok
     x1 = x[sort_idx]
     y1 = y[sort_idx]
     x2 = x1[:num_antennas]
@@ -74,7 +76,8 @@ def select_antennas(x, y, r_max, num_antennas, angle):
     return x2, y2
 
 
-def generate_super_station(super_station_angle, lattice_angles):
+def generate_super_station(super_station_angle, lattice_angles,
+                           align_sub_station_lattices=False):
     """Generate a v4a super-station layout with a specified super-station
        rotation angle and lattice angles
 
@@ -92,8 +95,8 @@ def generate_super_station(super_station_angle, lattice_angles):
     """
     num_stations = 6
     num_sub_stations = 6
-    num_antennas = 48
-    align_sub_station_lattices = False
+    num_antennas = 24
+    # align_sub_station_lattices = True
     lattice_angles = numpy.asarray(lattice_angles)
     # Work out some geometry for the sub-station and station pentagon
     sub_station_radius_m = 7.0
@@ -149,9 +152,13 @@ def generate_super_station(super_station_angle, lattice_angles):
             cy += sy0[j]
             cx, cy = rotate_coords(cx, cy, super_station_angle)
 
-            # Generate hexagonal lattice
-            xc, yc = generate_lattice(lattice_size, lattice_x_inc,
-                                      lattice_angles[j, i])
+            # # Generate hexagonal lattice
+            # xc, yc = generate_lattice(lattice_size, lattice_x_inc,
+            #                           lattice_angles[j, i])
+
+            # TODO-BM change to fit as many points as possible after x trials...
+            xc, yc, _ = gridgen_no_taper(500, 20, 1.5, 5000)
+            print(j, i, len(xc))
 
             # Adjust lattice center to be a multiple of the lattice spacing.
             # If enabled results in slightly different sub-station
@@ -163,7 +170,6 @@ def generate_super_station(super_station_angle, lattice_angles):
             angle = degrees(sub_station_angle[i] + station_angles[j])
             angle += super_station_angle + 18.0
             xc, yc = select_antennas(xc, yc, r_max, num_antennas, angle)
-
 
             centre_x[j, i] = cx
             centre_y[j, i] = cy
@@ -177,9 +183,9 @@ def plot_super_station():
     num_stations = 6
     num_sub_stations = 6
 
-    super_station_angle = 0.0
-    lattice_angles = numpy.zeros((num_stations, num_sub_stations))
-    # lattice_angles = numpy.random.randint(0, 72, (num_stations, num_sub_stations))
+    super_station_angle = 20.0
+    # lattice_angles = numpy.zeros((num_stations, num_sub_stations))
+    lattice_angles = numpy.random.randint(0, 72, (num_stations, num_sub_stations))
     x, y, cx, cy = generate_super_station(super_station_angle, lattice_angles)
     # x, y have dimension (num_stations, num_sub_stations, num_antennas)
 
@@ -217,24 +223,33 @@ def plot_v4a_telescope():
     for i in range(num_super_stations):
         ax.arrow(east[i*6], north[i*6], dx[i], dy[i], fc='g', ec='g',
                  head_width=5.0, head_length=5.0)
-        lattice_angles = numpy.random.randint(0, 72, (6, 6))
+        # lattice_angles = numpy.random.randint(0, 72, (6, 6))
+        lattice_angles = -360.0 * numpy.random.random((6, 6)) + 360.0
         x, y, _, _ = generate_super_station(angle[i], lattice_angles)
         x += east[i*6]
         y += north[i*6]
-        ax.plot(x.flatten(), y.flatten(), '+', alpha=0.5)
+        ax.plot(x.flatten(), y.flatten(), 'k+', alpha=0.2)
     ax.plot(east, north, 'k+')
     ax.plot(east[::6], north[::6], 'rx')
     ax.plot(east[1::6], north[1::6], 'bx')
 
+    ax.grid()
     lim = max(max(numpy.abs(ax.get_xlim())), max(numpy.abs(ax.get_ylim())))
+    # lim = 360
     ax.set_xlim(-lim, lim)
     ax.set_ylim(-lim, lim)
+    ax.set_xlabel('East [m]')
+    ax.set_ylabel('North [m]')
+    pyplot.savefig('v4a.png', dpi=300)
+    # pyplot.savefig('core_zoom.eps')
     pyplot.show()
+
 
 def generate_v4a_telescope_model():
     enu = numpy.loadtxt('../layouts/v7ska1lowN1v2arev3R.enu.564x4.txt')
     num_stations = enu.shape[0]
     num_super_stations = num_stations / 6
+    num_antennas = 24
     east = enu[:, 1]
     north = enu[:, 2]
     up = enu[:, 3]
@@ -243,7 +258,7 @@ def generate_v4a_telescope_model():
     dy = north[1::6] - north[::6]
     angle = numpy.degrees(numpy.arctan2(dy, dx)) + 54.0
 
-    model_dir = 'test_v4a.tm'
+    model_dir = 'v4a_random_positions.tm'
     if os.path.isdir(model_dir):
         shutil.rmtree(model_dir)
     os.makedirs(model_dir)
@@ -256,20 +271,54 @@ def generate_v4a_telescope_model():
     numpy.savetxt(station_file, station_layout_enu,
                   fmt='% -16.12f % -16.12f % -16.12f')
 
-    layout_enu = numpy.zeros((6*48, 2))
+    layout_enu = numpy.zeros((6*num_antennas, 2))
     for i in range(num_super_stations):
-        lattice_angles = numpy.random.randint(0, 72, (6, 6))
-        x, y, cx, cy = generate_super_station(angle[i], lattice_angles)
+        print('=== Super station %i ===' % (i + 1))
+        # lattice_angles = -360.0 * numpy.random.random((6, 6)) + 360.0
+        lattice_angles = numpy.zeros((6, 6))
+        x, y, cx, cy = generate_super_station(angle[i], lattice_angles,
+                                              False)
         for j in range(6):
             station_dir = join(model_dir, 'station%03i' % (i * 6 + j))
             os.makedirs(station_dir)
             layout_enu[:, 0] = x[j, :, :].flatten() - cx[j, 0]
             layout_enu[:, 1] = y[j, :, :].flatten() - cy[j, 0]
-            station_file = join(station_dir, 'layout_enu.txt')
+            station_file = join(station_dir, 'layout.txt')
             numpy.savetxt(station_file, layout_enu, fmt='% -16.12f % -16.12f')
+
+    print('plotting...')
+    fig = pyplot.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, aspect='equal')
+    for i in range(num_stations):
+        layout_file = join(model_dir, 'station%03i' % i, 'layout.txt')
+        layout = numpy.loadtxt(layout_file)
+        ax.plot(layout[:, 0], layout[:, 1], 'k+', alpha=0.1)
+    ax.grid()
+    ax.set_xlabel('East [m]')
+    ax.set_ylabel('North [m]')
+    pyplot.savefig(join(model_dir, 'all_stations.png'))
+    # pyplot.show()
+
+    for i in range(num_stations):
+        fig = pyplot.figure(figsize=(8, 8))
+        ax = fig.add_subplot(111, aspect='equal')
+        layout_file = join(model_dir, 'station%03i' % i, 'layout.txt')
+        layout = numpy.loadtxt(layout_file)
+        ax.plot(layout[:, 0], layout[:, 1], 'k+', alpha=1.0)
+        ax.grid()
+        ax.set_xlabel('East [m]')
+        ax.set_ylabel('North [m]')
+        ax.set_xlim(-20, 20)
+        ax.set_ylim(-20, 20)
+        pyplot.savefig(join(model_dir, 'station_%03i.png' % i))
+        pyplot.close()
+
+    # pyplot.show()
 
 
 if __name__ == '__main__':
-    plot_super_station()
+    # plot_super_station()
     # plot_v4a_telescope()
-    # generate_v4a_telescope_model()
+    # FIXME-BM: Generate different model folders for each config
+    # eg (random / aligned / rotated)
+    generate_v4a_telescope_model()

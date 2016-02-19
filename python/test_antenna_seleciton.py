@@ -3,7 +3,7 @@
 import numpy
 import matplotlib.pyplot as pyplot
 from math import pi, cos, sin, radians, sqrt, atan2, degrees
-
+from gridgen_no_taper import gridgen_no_taper
 
 def rotate_values(x, y, angle):
     """Rotation by angle, +angle == counterclockwise rotation"""
@@ -57,7 +57,9 @@ if __name__ == '__main__':
     ssep = 2.0 * (r_max + side * cos(radians(18.0))) + 1.5
 
     # Generate the lattice
-    x, y = generate_lattice_2(30, 30, sqinc/2.0)
+    # x, y = generate_lattice_2(30, 30, sqinc/2.0)
+    x, y, _ = gridgen_no_taper(90, 20, 1.5, 10000)
+
     xs, ys, xe, ye = select_antennas(x, y, angle=-90.0)
 
     fig1 = pyplot.figure(figsize=(16, 8))
