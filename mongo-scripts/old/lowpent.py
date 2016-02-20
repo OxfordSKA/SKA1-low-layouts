@@ -94,7 +94,7 @@ def generate_ska_low_v4a_super_station(super_station_angle,
     radp = rmax * cos(pi / 5.) / numpy.cos(thetam5 - pi / 5.)
     xd = radp * numpy.cos(theta)
     yd = radp * numpy.sin(theta)
-    # ax.plot(xd, yd, '-', color='r', label='unroated sub-station')
+    # ax.plot(xd, yd, '-', color='r', label2='unroated sub-station')
     for j in range(6):
         for i in range(6):
             # rotate sub-station about origin
@@ -178,7 +178,7 @@ def generate_ska_low_v4a_super_station(super_station_angle,
     # sbedist = sbedist[:, :, 0:num_ant]
     # sbndist = sbndist[:, :, 0:num_ant]
     # ax.plot(sbedist.flatten(), sbndist.flatten(), '+', color='b',
-    #         label='generated')
+    #         label2='generated')
 
 
 
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     # generate_ska_low_v4a_super_station(dalp, alpg, angles, sangles,
     #                                    fract_jitter, ax)
     # sb6r0 = numpy.loadtxt('../ant_files/sbfile7r0.ant')
-    # # ax.plot(sb6r0[:, 0], sb6r0[:, 1], 'rx', label='reference')
+    # # ax.plot(sb6r0[:, 0], sb6r0[:, 1], 'rx', label2='reference')
     # plt.legend()
     # plt.savefig('test_sbfile7r0.png')
     # plt.show()
