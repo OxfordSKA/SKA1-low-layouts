@@ -113,10 +113,4 @@ if __name__ == '__main__':
     # Run the beam pattern simulation.
     subprocess.call(['oskar_sim_beam_pattern', ini_file])
 
-
-    # TODO plot nice images of the beams using python
-    # aplpy ?
-    # Movie of the auto-power beam from each station
-    # Image of cross-power average beam
-
     os.remove(ini_file)
