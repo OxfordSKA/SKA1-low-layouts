@@ -11,8 +11,10 @@ import time
 if __name__ == '__main__':
 
     # beams_dir = join('beams_v4a_fixed_lattice_aligned', 'e')
-    model_dir = join('..', 'oskar_models', 'v4a_random_lattice_aligned.tm')
-    beams_dir = join('beams_v4a_random_lattice_aligned', 'e')
+    # model_dir = join('..', 'oskar_models', 'v4a_random_lattice_aligned.tm')
+    # beams_dir = join('beams_v4a_random_lattice_aligned', 'e')
+    model_dir = join('..', 'oskar_models', 'v4a_fixed_lattice_not_aligned.tm')
+    beams_dir = join('beams_v4a_fixed_lattice_not_aligned', 'e')
     fig = pyplot.figure(figsize=(16, 7))
     fig.subplots_adjust(left=0.05, bottom=0.08, right=1.0, top=0.92,
                         hspace=0.0, wspace=0.0)
@@ -23,7 +25,7 @@ if __name__ == '__main__':
     im = ax2.imshow(numpy.random.random((512, 512)), interpolation='nearest',
                     animated=True, vmin=-60, vmax=0.0)
     cbar = ax2.figure.colorbar(im, ax=ax2)
-    cbar.set_label('db', fontsize='small')
+    cbar.set_label('Decibels', fontsize='small')
     cbar.ax.tick_params(labelsize='small')
     ax2.axes.get_xaxis().set_ticks([])
     ax2.axes.get_yaxis().set_ticks([])

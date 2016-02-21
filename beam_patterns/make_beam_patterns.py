@@ -94,9 +94,10 @@ if __name__ == '__main__':
     # TODO include pointing frequency and telescope name in the folder?
     # TODO copy settings to output directory.
     # out_dir = 'beams_v4a_fixed_lattice_aligned'
-    out_dir = 'beams_v4a_random_lattice_aligned'
-    # telescope_model = join('..', 'oskar_models', 'v4a_fixed_lattice_aligned.tm')
-    telescope_model = join('..', 'oskar_models', 'v4a_random_lattice_aligned.tm')
+    out_dir = 'beams_v4a_fixed_lattice_not_aligned'
+    telescope_model = join('..', 'oskar_models',
+                           'v4a_fixed_lattice_not_aligned.tm')
+    # telescope_model = join('..', 'oskar_models', 'v4a_random_lattice_aligned.tm')
     freq_hz = 350.0e6
     elevation = 90.0
     create_settings(ini_file, telescope_model, freq_hz, elevation, out_dir)
@@ -117,3 +118,5 @@ if __name__ == '__main__':
     # aplpy ?
     # Movie of the auto-power beam from each station
     # Image of cross-power average beam
+
+    os.remove(ini_file)
