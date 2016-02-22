@@ -9,6 +9,9 @@ import shutil
 import os
 from os.path import join
 from math import radians
+from taper_function import taylor_win
+from numpy.random import rand
+from math import floor
 
 
 def rotate_coords(x, y, angle):
@@ -16,6 +19,150 @@ def rotate_coords(x, y, angle):
     xr = x * numpy.cos(radians(angle)) - y * numpy.sin(radians(angle))
     yr = x * numpy.sin(radians(angle)) + y * numpy.cos(radians(angle))
     return xr, yr
+
+
+def gridgen_taylor(num_points, diameter, min_dist, sll=-28, n_miss_max=1000):
+    """Generate uniform random positions within a specified diameter which
+    are no closer than a specified minimum distance.
+
+    Uses and algorithm where the area is split into a grid sectors
+    so that when checking for minimum distance, only nearby points need to be
+    considered.
+    """
+    def get_trail_position(r):
+        x = -r + 2.0 * r * rand()
+        y = -r + 2.0 * r * rand()
+        return x, y
+
+    def grid_position(x, y, scale, r):
+        jx = int(floor((x + r) * scale))
+        jy = int(floor((y + r) * scale))
+        return jx, jy
+
+    # Fix seed to study closest match fails (with fixed seed can
+    # print problematic indices)
+    # seed(2)
+
+    r = diameter / 2.0  # Radius
+
+    # Initialise taylor taper.
+    nbar = int(numpy.ceil(2.0 * (numpy.arccosh(10**(-sll / 20.0)) /
+                                 numpy.pi)**2 + 0.5))
+    n_taylor = 10000
+    w_taylor = taylor_win(n_taylor + 1, nbar, sll)
+    w_taylor /= w_taylor.max()
+    w_taylor = w_taylor[n_taylor/2:]
+    r_taylor = numpy.arange(w_taylor.shape[0]) * (diameter / (n_taylor + 1))
+    n_taylor = w_taylor.shape[0]
+
+    p = 1.0 / w_taylor[-1]
+    max_dist = p * min_dist
+
+    # Grid size and scaling onto the grid
+    grid_size = min(100, int(round(float(diameter) / max_dist)))
+    grid_size += grid_size % 2
+    grid_cell = float(diameter) / grid_size  # Grid sector cell size
+    scale = 1.0 / grid_cell  # Scaling onto the sector grid.
+    check_width = 1
+    # print('- Station d: %f' % diameter)
+    # print('- Grid size: %i' % grid_size)
+    # print('- Min dist: %f' % min_dist)
+    # print('- Max dist: %f' % max_dist)
+    # print('- Grid cell: %f' % grid_cell)
+
+    # Pre-allocate coordinate arrays
+    x = numpy.zeros(num_points)
+    y = numpy.zeros(num_points)
+
+    # Grid meta-data
+    # First index in the grid
+    grid_i_start = numpy.zeros((grid_size, grid_size), dtype='i8')
+    # Last index in the grid
+    grid_i_end = numpy.zeros((grid_size, grid_size), dtype='i8')
+    # Points in grid cell.
+    grid_count = numpy.zeros((grid_size, grid_size), dtype='i8')
+    # Next coordinate index.
+    grid_next = numpy.zeros(num_points, dtype='i8')
+
+    n = num_points
+    n_req = num_points
+    num_miss = 0
+    max_num_miss = 0
+    miss_count = []
+    j = 0
+    space_remaining = True
+    while space_remaining:
+        done = False
+        while not done:
+            # Generate a trail position
+            xt, yt = get_trail_position(r)
+            rt = (xt**2 + yt**2)**0.5
+
+            # Check if the point is inside the diameter.
+            if rt + min_dist / 2.0 > r:
+                num_miss += 1
+
+            # Check if min distance is met.
+            else:
+                iw = int(round((rt / r) * n_taylor))
+                ant_r = min_dist / (2.0 * w_taylor[iw])
+
+                jx, jy = grid_position(xt, yt, scale, r)
+                y0 = max(0, jy - check_width)
+                y1 = min(grid_size, jy + check_width + 1)
+                x0 = max(0, jx - check_width)
+                x1 = min(grid_size, jx + check_width + 1)
+                dmin = diameter  # Set initial min to diameter.
+                for ky in range(y0, y1):
+                    for kx in range(x0, x1):
+                        if grid_count[kx, ky] > 0:
+                            i_other = grid_i_start[kx, ky]
+                            for num_other in range(grid_count[kx, ky]):
+                                dx = xt - x[i_other]
+                                dy = yt - y[i_other]
+                                dr = (dx**2 + dy**2)**0.5
+                                r_other = (x[i_other]**2 + y[i_other]**2)**0.5
+                                iw = int(round(r_other / r * n_taylor))
+                                ant_r_other = min_dist / (2.0 * w_taylor[iw])
+
+                                if dr - ant_r_other <= dmin:
+                                    dmin = dr - ant_r_other
+                                i_other = grid_next[i_other]
+
+                iw = int(round(rt / r * n_taylor))
+                scaled_min_dist_3 = (min_dist / 2.0) / w_taylor[iw]
+
+                if dmin >= scaled_min_dist_3:
+                    x[j] = xt
+                    y[j] = yt
+
+                    if grid_count[jx, jy] == 0:
+                        grid_i_start[jx, jy] = j
+                    else:
+                        grid_next[grid_i_end[jx, jy]] = j
+                    grid_i_end[jx, jy] = j
+                    grid_count[jx, jy] += 1
+                    miss_count.append(num_miss)
+                    max_num_miss = max(max_num_miss, num_miss)
+                    num_miss = 0
+                    done = True
+                    j += 1
+                else:
+                    num_miss += 1
+
+            if num_miss >= n_miss_max:
+                n = j - 1
+                done = True
+
+        if num_miss >= n_miss_max or j >= num_points:
+            max_num_miss = max(max_num_miss, num_miss)
+            break
+
+    if n < n_req:
+        x = x[0:n]
+        y = y[0:n]
+
+    return x, y, miss_count, w_taylor, r_taylor, n_taylor
 
 
 def gridgen(num_points, diameter, min_dist, max_trials=1000):
@@ -117,12 +264,14 @@ def gridgen(num_points, diameter, min_dist, max_trials=1000):
 def gen_super_stations():
     """Generation 85 super-stations by rotation"""
     # =========================================================================
+    sll = -20
     num_super_stations = 85
     num_stations_per_super_station = 6
-    max_tries_per_station = 3
-    diameter = 29.0  # m
+    num_tries = 10000  # per grid
+    max_tries_per_station = 5
+    diameter = 30.0  # m
     antenna_diameter = 1.5
-    num_ant_station = 180
+    num_ant_station = 95
     ss_diameter = 90.0
     st_diameter = diameter
     angles = numpy.arange(num_stations_per_super_station - 1) * \
@@ -133,11 +282,11 @@ def gen_super_stations():
     sy = r0 * numpy.sin(numpy.radians(angles))
     sx = numpy.insert(sx, 0, 0.0)
     sy = numpy.insert(sy, 0, 0.0)
-    ss_model_dir = 'v4d_r_90m_180ant_ss_uniform.tm'
+    ss_model_dir = 'v4d_r_90m_%iant_ss_taylor-20.tm' % num_ant_station
     if os.path.isdir(ss_model_dir):
         shutil.rmtree(ss_model_dir)
     os.makedirs(ss_model_dir)
-    st_model_dir = 'v4d_r_90m_180ant_st_uniform.tm'
+    st_model_dir = 'v4d_r_90m_%iant_st_taylor-20.tm' % num_ant_station
     if os.path.isdir(st_model_dir):
         shutil.rmtree(st_model_dir)
     os.makedirs(st_model_dir)
@@ -219,8 +368,9 @@ def gen_super_stations():
             trial = 0
             while trial < max_tries_per_station:
                 print('.', end='')
-                ax, ay, _ = gridgen(num_ant_station, diameter, antenna_diameter,
-                                    max_trials=10000)
+                ax, ay, mc, _, _, _ = gridgen_taylor(num_ant_station, diameter,
+                                                     antenna_diameter, sll,
+                                                     num_tries)
                 if ax.shape[0] == num_ant_station:
                     ss_ant_x[j, :] = ax + sx[j]
                     ss_ant_y[j, :] = ay + sy[j]
