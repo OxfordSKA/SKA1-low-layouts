@@ -12,12 +12,14 @@ Versions:
 """
 
 from __future__ import print_function
-import numpy
-import matplotlib.pyplot as pyplot
-from math import pi, cos, sin, radians, sqrt, degrees, ceil
+
 import os
-from os.path import join
 import shutil
+from math import pi, cos, sin, radians, sqrt, degrees, ceil
+from os.path import join
+
+import matplotlib.pyplot as pyplot
+import numpy
 from gridgen_no_taper import gridgen_no_taper
 
 

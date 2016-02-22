@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
-import numpy
+from math import pi, cos, sin, radians, sqrt
+
 import matplotlib.pyplot as pyplot
-from math import pi, cos, sin, radians, sqrt, atan2, degrees
+import numpy
+
 from gridgen_no_taper import gridgen_no_taper
+
 
 def rotate_values(x, y, angle):
     """Rotation by angle, +angle == counterclockwise rotation"""

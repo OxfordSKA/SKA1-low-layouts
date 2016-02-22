@@ -1,11 +1,10 @@
 """Module to generate super-stations for trail v4d spec. layouts"""
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import numpy
+
 import matplotlib.pyplot as pyplot
-import gridgen_no_taper as random_grid
+import numpy
 from numpy.random import rand
-from math import ceil
 
 
 def gridgen(num_points, diameter, min_dist, max_trials=1000):
@@ -107,9 +106,9 @@ def gridgen(num_points, diameter, min_dist, max_trials=1000):
 def gen_super_stations():
     """Generation 85 super-stations by rotation"""
     num_stations = 6
-    diameter = 35.0  # m
+    diameter = 30.0  # m
     antenna_diameter = 1.5
-    num_ant_station = 256
+    num_ant_station = 180
     angles = numpy.arange(num_stations - 1) * (360.0 / float(num_stations - 1))
     angles += 90.0
     r0 = diameter + 1.0
@@ -122,13 +121,15 @@ def gen_super_stations():
                                   max_trials=10000)
     print('Number of antennas generated = %i' % ant_x.shape[0])
     if ant_x.shape[0] != num_ant_station:
+        print('Error, not enough antennas generated... %i / %i' %
+              (ant_x.shape[0], num_ant_station))
         return
 
     fig = pyplot.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, aspect='equal')
-    # station centres
+    # Station centres
     ax.plot(sx, sy, '+', ms=20, mew=2.0)
-    # station diameters
+    # Station diameters
     for i in range(num_stations):
         circle = pyplot.Circle((sx[i], sy[i]), diameter / 2.0,
                                color='k', linestyle='-',
@@ -147,8 +148,13 @@ def gen_super_stations():
             ax.add_artist(circle)
 
     # Super-station diameter
-    circle = pyplot.Circle((0.0, 0.0), 66.0 / 2.0,
+    circle = pyplot.Circle((0.0, 0.0), 81.0 / 2.0,
                            color='k', linestyle='-',
+                           fill=False, alpha=0.5)
+    ax.add_artist(circle)
+
+    circle = pyplot.Circle((0.0, 0.0), 66.0 / 2.0,
+                           color='r', linestyle='-',
                            fill=False, alpha=0.5)
     ax.add_artist(circle)
 
@@ -159,16 +165,4 @@ def gen_super_stations():
 
 
 if __name__ == '__main__':
-    """
-    v4d:
-        total stations: 512
-        super-stations: 85 (36 outer, 49 core)
-        sub-stations: n/a
-        station:
-            diameter: 27 m
-            ave. ant. sep: 1.5m
-            num_antennas: 256
-        super-station:
-            diameter: 66m
-    """
     gen_super_stations()
