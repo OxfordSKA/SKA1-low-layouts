@@ -1,8 +1,8 @@
-import numpy
-import matplotlib.pyplot as pyplot
-from os.path import join
 import math
-import generate_v4a_super_station_layout as v4a_layout
+from os.path import join
+
+import matplotlib.pyplot as pyplot
+import numpy
 
 
 def rotate_station(theta, coordinates):
