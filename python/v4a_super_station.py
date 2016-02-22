@@ -246,6 +246,7 @@ def plot_v4a_telescope():
 
 
 def generate_v4a_telescope_model():
+    # FIXME-BM: also load super station layout to create top level layout
     enu = numpy.loadtxt('../layouts/v7ska1lowN1v2arev3R.enu.564x4.txt')
     num_stations = enu.shape[0]
     num_super_stations = num_stations / 6
