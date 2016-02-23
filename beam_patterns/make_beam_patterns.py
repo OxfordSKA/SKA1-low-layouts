@@ -164,7 +164,8 @@ def auto_beam_movie(model_dir, beams_dir, im_size):
                                   frames=range(num_stations), blit=False)
     if os.path.isfile(mp4_file):
         os.remove(mp4_file)
-    ani.save(mp4_file, fps=25, bitrate=5000)
+    ani.save(mp4_file, fps=25, bitrate=-1, codec='libx264',
+             extra_args=['-pix_fmt', 'yuv420p'])
     print('- Movie took %.2f s' % (time.time() - t0))
 
 
