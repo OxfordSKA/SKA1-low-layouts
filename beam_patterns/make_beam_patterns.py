@@ -47,7 +47,7 @@ def create_settings(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
     s = dict()
     s['simulator'] = {
         'double_precision': False,
-        'max_sources_per_chunk': 1024
+        'max_sources_per_chunk': 4096
     }
     s['observation'] = {
         'phase_centre_ra_deg': ra,
@@ -70,7 +70,7 @@ def create_settings(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
             'size': 512,
             'fov_deg': 180.0
         },
-        'root_path': join(out_dir, 'e/beam'),
+        'root_path': join(out_dir, 'b'),
         'output': {
             'average_time_and_channel': True,
             'separate_time_and_channel': False
@@ -113,11 +113,10 @@ def main():
 
     ii = 0
     for t, model in enumerate(models):
+        model = join(model_dir, model)
         for frame in frames:
             for p, (ra, dec, mjd) in enumerate(pointings):
                 for freq in freq_hz:
-                    if ii >= 1:
-                        continue
                     out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
                                (ii, t, frame[0], p, freq / 1.0e6))
                     print('=' * 80)
