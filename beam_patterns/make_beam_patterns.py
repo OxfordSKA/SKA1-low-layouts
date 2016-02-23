@@ -95,6 +95,7 @@ def create_settings(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
 
 
 def auto_beam_movie(model_dir, beams_dir, im_size):
+    cmap = 'inferno'
     mp4_file = join(beams_dir, 'auto_beams.mp4')
     if os.path.isfile(mp4_file):
         return
@@ -122,7 +123,7 @@ def auto_beam_movie(model_dir, beams_dir, im_size):
                       color='k', transform=ax2.transAxes, fontsize='x-small')
     im = ax2.imshow(numpy.random.random((im_size, im_size)),
                     interpolation='nearest', animated=True,
-                    vmin=-40, vmax=0.0, cmap='seismic')
+                    vmin=-40, vmax=0.0, cmap=cmap)
     divider = make_axes_locatable(ax2)
     cax2 = divider.append_axes("right", size="5%", pad=0.05)
     cbar = ax2.figure.colorbar(im, cax=cax2)
@@ -152,6 +153,10 @@ def auto_beam_movie(model_dir, beams_dir, im_size):
         label1.set_text('station-%04i' % i)
         return im, label2, line1, label1
 
+    for s_idx in range(20):
+        animate(s_idx)
+        fig.savefig(join(beams_dir, 'auto_power_s%03i.png' % s_idx))
+
     num_stations = len([s for s in os.listdir(model_dir)
                         if os.path.isdir(join(model_dir, s)) and
                         s.startswith('station')])
@@ -159,12 +164,13 @@ def auto_beam_movie(model_dir, beams_dir, im_size):
                                   frames=range(num_stations), blit=False)
     if os.path.isfile(mp4_file):
         os.remove(mp4_file)
-    ani.save(mp4_file, fps=10, bitrate=5000)
+    ani.save(mp4_file, fps=25, bitrate=5000)
     print('- Movie took %.2f s' % (time.time() - t0))
 
 
-def cross_beam_image(model, out_dir, imsize):
-    plot_file = join(out_dir, 'ave_cross_power_beam.png')
+def cross_beam_image(model, out_dir, imsize, min_db):
+    cmap = 'inferno'
+    plot_file = join(out_dir, 'ave_cross_power_beam_%.1fdb.png' % min_db)
     if os.path.isfile(plot_file):
         return
     file_name = join(out_dir, 'b_TIME_AVG_CHAN_AVG_CROSS_POWER_AMP_I_I.fits')
@@ -176,8 +182,8 @@ def cross_beam_image(model, out_dir, imsize):
     fig.subplots_adjust(left=0.05, bottom=0.08, right=0.95, top=0.92,
                         hspace=0.0, wspace=0.05)
     ax1 = fig.add_subplot(111, aspect='equal')
-    im = ax1.imshow(data_db, interpolation='nearest', vmin=-60, vmax=0.0,
-                    cmap='seismic')
+    im = ax1.imshow(data_db, interpolation='nearest', vmin=min_db, vmax=0.0,
+                    cmap=cmap)
     divider = make_axes_locatable(ax1)
     cax2 = divider.append_axes("right", size="5%", pad=0.05)
     cbar = ax1.figure.colorbar(im, cax=cax2)
@@ -195,7 +201,7 @@ def cross_beam_image(model, out_dir, imsize):
 def main():
     # Pointings
     pointings_ = numpy.loadtxt('pointings.txt')
-    idx = [0, 1, 2]  # Selection indices for pointings.
+    idx = [0, 2]  # Selection indices for pointings.
     az = pointings_[idx, 3]
     el = pointings_[idx, 4]
     pointings = zip(pointings_[idx, 0], pointings_[idx, 1], pointings_[idx, 2])
@@ -205,12 +211,15 @@ def main():
 
     # Telescopes
     model_dir = 'models'
-    # models = ['v4a_fixed_lattice_aligned.tm',
-    #           'v4a_fixed_lattice_not_aligned.tm',
-    #           'v4a_random_lattice_aligned.tm']
-    models = [d for d in os.listdir(model_dir)
-              if os.path.isdir(join(model_dir, d))
-              and d.endswith('.tm')]
+    # models = [d for d in os.listdir(model_dir)
+    #           if os.path.isdir(join(model_dir, d))
+    #           and d.endswith('.tm')]
+    # for model in models:
+    #     print("'%s'," % model)
+    models = ['v4a_random_lattice_not_aligned.tm',
+              'v4a_random_positions.tm',
+              'v4a_super_station_random_lattice_not_aligned.tm',
+              'v4a_super_station_random_positions.tm']
     # Verify models exist
     for t, model in enumerate(models):
         model = join(model_dir, model)
@@ -230,8 +239,9 @@ def main():
         for frame in frames:
             for p, (ra, dec, mjd) in enumerate(pointings):
                 for freq in freq_hz:
-                    if ii >= 2:
-                        continue
+                    t1 = time.time()
+                    # if ii >= 1:
+                    #     continue
                     out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
                                (ii, t, frame[0], p, freq / 1.0e6))
                     ini_file = 'config_%03i.ini' % ii
@@ -246,45 +256,21 @@ def main():
                     create_settings(out_dir, ini_file, mjd, ra, dec, freq,
                                     model, frame, im_size)
                     os.makedirs(out_dir)
-                    subprocess.call(['oskar_sim_beam_pattern', '-q', ini_file])
+                    subprocess.call(['oskar_sim_beam_pattern', ini_file])
                     os.remove(ini_file)
-
-    print()
-    print()
-    ii = 0
-    for t, model in enumerate(models):
-        model = join(model_dir, model)
-        for frame in frames:
-            for p in range(len(pointings)):
-                for freq in freq_hz:
-                    out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
-                               (ii, t, frame[0], p, freq / 1.0e6))
-                    ii += 1
-                    if not os.path.isdir(out_dir):
-                        continue
-                    print('*' * 80)
-                    print('%03i/%03i : %s' % (ii, total, out_dir))
-                    print('*' * 80)
-                    print('-', out_dir)
-                    print('-', model)
+                    print('= PLOTTING OUTPUT')
                     auto_beam_movie(model, out_dir, im_size)
-                    cross_beam_image(model, out_dir, im_size)
-
-    ii = 0
-    for t, model in enumerate(models):
-        for frame in frames:
-            for p in range(len(pointings)):
-                for freq in freq_hz:
-                    out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
-                               (ii, t, frame[0], p, freq / 1.0e6))
-                    ii += 1
-                    if not os.path.exists(out_dir):
-                        continue
+                    cross_beam_image(model, out_dir, im_size, -40.0)
+                    cross_beam_image(model, out_dir, im_size, -60.0)
                     fits_files = [f for f in os.listdir(out_dir)
                                   if f.endswith('.fits')
+                                  and '_AUTO_POWER_' in f
                                   and os.path.isfile(join(out_dir, f))]
+                    print('= REMOVING %i FITS FILES' % len(fits_files))
                     for ff in fits_files:
                         os.remove(join(out_dir, ff))
+                    print('= DONE! %.2f s' % (time.time() - t1))
+
 
 if __name__ == '__main__':
     main()
