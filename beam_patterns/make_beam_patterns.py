@@ -94,7 +94,7 @@ def create_settings(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
     settings.dict_to_ini(s, ini_file, overwrite=True, verbose=True)
 
 
-def auto_beam_movie(model_dir, beams_dir, imsize):
+def auto_beam_movie(model_dir, beams_dir, im_size):
     mp4_file = join(beams_dir, 'auto_beams.mp4')
     if os.path.isfile(mp4_file):
         return
@@ -109,14 +109,18 @@ def auto_beam_movie(model_dir, beams_dir, imsize):
     ax1.set_title('Station antenna positions', fontsize='small')
     ax1.set_xlabel('East [m]', fontsize='small')
     ax1.set_ylabel('North [m]', fontsize='small')
-    ax1.set_xlim(-20, 20)
-    ax1.set_ylim(-20, 20)
+    if '_super_station_' in model_dir or '_ss_' in model_dir:
+        ax1.set_xlim(-60, 60)
+        ax1.set_ylim(-60, 60)
+    else:
+        ax1.set_xlim(-20, 20)
+        ax1.set_ylim(-20, 20)
     ax1.grid()
 
     ax2 = fig.add_subplot(122, aspect='equal')
     label2 = ax2.text(0.02, 0.98, '', ha='left', va='top', style='italic',
                       color='k', transform=ax2.transAxes, fontsize='x-small')
-    im = ax2.imshow(numpy.random.random((imsize, imsize)),
+    im = ax2.imshow(numpy.random.random((im_size, im_size)),
                     interpolation='nearest', animated=True,
                     vmin=-40, vmax=0.0, cmap='seismic')
     divider = make_axes_locatable(ax2)
@@ -191,25 +195,33 @@ def cross_beam_image(model, out_dir, imsize):
 def main():
     # Pointings
     pointings_ = numpy.loadtxt('pointings.txt')
-    idx = [0, 2]  # Selection indices for pointings.
+    idx = [0, 1, 2]  # Selection indices for pointings.
     az = pointings_[idx, 3]
     el = pointings_[idx, 4]
     pointings = zip(pointings_[idx, 0], pointings_[idx, 1], pointings_[idx, 2])
 
     # Frequencies
-    # freq_hz = [50.0e6, 350.0e6]
-    freq_hz = [350.0e6]
+    freq_hz = [50.0e6, 350.0e6]
 
     # Telescopes
     model_dir = 'models'
-    models = ['v4a_fixed_lattice_aligned.tm',
-              'v4a_fixed_lattice_not_aligned.tm']
+    # models = ['v4a_fixed_lattice_aligned.tm',
+    #           'v4a_fixed_lattice_not_aligned.tm',
+    #           'v4a_random_lattice_aligned.tm']
+    models = [d for d in os.listdir(model_dir)
+              if os.path.isdir(join(model_dir, d))
+              and d.endswith('.tm')]
+    # Verify models exist
+    for t, model in enumerate(models):
+        model = join(model_dir, model)
+        if not os.path.isdir(model):
+            print('model %s not found!' % model)
+            return
 
     # Coord. frames
-    # frames = ['equatorial', 'horizon']
-    frames = ['equatorial']
+    frames = ['equatorial', 'horizon']
 
-    imsize = 512
+    im_size = 1024
 
     total = len(models) * len(frames) * len(az) * len(freq_hz)
     ii = 0
@@ -232,7 +244,7 @@ def main():
                         print(' - INFO: Results already exists, skipping.')
                         continue
                     create_settings(out_dir, ini_file, mjd, ra, dec, freq,
-                                    model, frame, imsize)
+                                    model, frame, im_size)
                     os.makedirs(out_dir)
                     subprocess.call(['oskar_sim_beam_pattern', '-q', ini_file])
                     os.remove(ini_file)
@@ -243,7 +255,7 @@ def main():
     for t, model in enumerate(models):
         model = join(model_dir, model)
         for frame in frames:
-            for p, (ra, dec, mjd) in enumerate(pointings):
+            for p in range(len(pointings)):
                 for freq in freq_hz:
                     out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
                                (ii, t, frame[0], p, freq / 1.0e6))
@@ -255,13 +267,13 @@ def main():
                     print('*' * 80)
                     print('-', out_dir)
                     print('-', model)
-                    auto_beam_movie(model, out_dir, imsize)
-                    cross_beam_image(model, out_dir, imsize)
+                    auto_beam_movie(model, out_dir, im_size)
+                    cross_beam_image(model, out_dir, im_size)
 
     ii = 0
     for t, model in enumerate(models):
         for frame in frames:
-            for p, (ra, dec, mjd) in enumerate(pointings):
+            for p in range(len(pointings)):
                 for freq in freq_hz:
                     out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
                                (ii, t, frame[0], p, freq / 1.0e6))
@@ -271,8 +283,8 @@ def main():
                     fits_files = [f for f in os.listdir(out_dir)
                                   if f.endswith('.fits')
                                   and os.path.isfile(join(out_dir, f))]
-                    for file in fits_files:
-                        os.remove(join(out_dir, file))
+                    for ff in fits_files:
+                        os.remove(join(out_dir, ff))
 
 if __name__ == '__main__':
     main()
