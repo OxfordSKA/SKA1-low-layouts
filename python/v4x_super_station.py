@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import numpy
 from numpy.random import rand, seed
-from math import ceil
+from math import ceil, radians
 import matplotlib.pyplot as pyplot
 import time
+import shutil
+import os
+from os.path import join
 
 
 def grid_position(x, y, scale, grid_size):
@@ -338,6 +342,212 @@ def main3():
     print(5, color[5], len(x0))
     pyplot.show()
 
+
+def gen_super_stations():
+    """Generate 85 super-stations"""
+    # =========================================================================
+    inc = (360.0/5.0)
+    ang = numpy.arange(5) * inc
+    num_super_stations = 85
+    num_stations_per_super_station = 6
+    num_ant_station = 256
+    num_antennas = num_ant_station * num_stations_per_super_station
+    num_antennas_gridgen = 256 * num_stations_per_super_station + 80
+    antenna_footprint = 1.5  # m
+    max_trials = 100000
+    ss_diameter = 85.0
+    st_diameter = ss_diameter / 3.0
+    r_outer = ss_diameter / 3.0
+    ss_model_dir = 'v4x_r_90m_180ant_ss_uniform.tm'
+    if os.path.isdir(ss_model_dir):
+        shutil.rmtree(ss_model_dir)
+    os.makedirs(ss_model_dir)
+    st_model_dir = 'v4x_r_90m_180ant_st_uniform.tm'
+    if os.path.isdir(st_model_dir):
+        shutil.rmtree(st_model_dir)
+    os.makedirs(st_model_dir)
+    ss_angles = -360.0 * numpy.random.random(num_super_stations) + 360.0
+
+    # =========================================================================
+
+    fig1 = pyplot.figure(figsize=(8, 8))
+    ax1 = fig1.add_subplot(111, aspect='equal')
+    ax1.set_xlabel('East [m]')
+    ax1.set_ylabel('North [m]')
+    ax1.grid()
+    ax1.set_xlim(-60, 60)
+    ax1.set_ylim(-60, 60)
+    line1, = ax1.plot([], [], 'k+')
+    label1 = ax1.text(0.02, 0.98, '', ha='left', va='top', style='italic',
+                      color='k', transform=ax1.transAxes, fontsize='x-small')
+    ss_circle = pyplot.Circle((0.0, 0.0), ss_diameter / 2.0,
+                           color='r', linestyle='--',
+                           fill=False, alpha=0.3, lw=2.0)
+    ax1.add_artist(ss_circle)
+
+    fig2 = pyplot.figure(figsize=(8, 8))
+    ax2 = fig2.add_subplot(111, aspect='equal')
+    ax2.set_xlabel('East [m]')
+    ax2.set_ylabel('North [m]')
+    ax2.grid()
+    ax2.set_xlim(-60, 60)
+    ax2.set_ylim(-60, 60)
+    ss_circle = pyplot.Circle((0.0, 0.0), ss_diameter / 2.0,
+                           color='r', linestyle='--',
+                           fill=False, alpha=0.3, lw=2.0)
+    ax2.add_artist(ss_circle)
+
+    fig3 = pyplot.figure(figsize=(8, 8))
+    ax3 = fig3.add_subplot(111, aspect='equal')
+    ax3.set_xlabel('East [m]')
+    ax3.set_ylabel('North [m]')
+    ax3.grid()
+    ax3.set_xlim(-30, 30)
+    ax3.set_ylim(-30, 30)
+    line3, = ax3.plot([], [], 'k+')
+    label3 = ax3.text(0.02, 0.98, '', ha='left', va='top', style='italic',
+                      color='k', transform=ax3.transAxes, fontsize='x-small')
+
+    fig4 = pyplot.figure(figsize=(8, 8))
+    ax4 = fig4.add_subplot(111, aspect='equal')
+    ax4.set_xlabel('East [m]')
+    ax4.set_ylabel('North [m]')
+    ax4.grid()
+    ax4.set_xlim(-30, 30)
+    ax4.set_ylim(-30, 30)
+    # =========================================================================
+
+    ss_ant_x = numpy.zeros((num_stations_per_super_station, num_ant_station))
+    ss_ant_y = numpy.zeros_like(ss_ant_x)
+    st_ant_x = numpy.zeros((num_stations_per_super_station, num_ant_station))
+    st_ant_y = numpy.zeros_like(st_ant_x)
+    ss_enu = numpy.zeros((num_ant_station * num_stations_per_super_station, 2))
+    st_enu = numpy.zeros((num_ant_station, 2))
+
+    for i in range(num_super_stations):
+        print('== super station %i ==' % i)
+
+        # Generate antennas within superstation.
+        x = numpy.zeros((num_antennas), dtype='f8')
+        y = numpy.zeros((num_antennas), dtype='f8')
+        tries = 0
+        while tries < 3:
+            x, y, _ = gridgen_no_taper(num_antennas_gridgen, ss_diameter,
+                                                 antenna_footprint, max_trials)
+            num_points = len(x)
+            tries += 1
+            if num_points == num_antennas_gridgen:
+                break
+            else:
+                print("Missed")
+
+        # Generate station centres.
+        sx = r_outer * numpy.cos(numpy.radians(ang + ss_angles[i]))
+        sy = r_outer * numpy.sin(numpy.radians(ang + ss_angles[i]))
+
+        # Find the radius of the 256th antenna closest to the centre.
+        r = (x**2 + y**2)**0.5
+        r0 = numpy.sort(r)[num_ant_station]
+
+        # Pull out the inner 256 antennas into x0, y0 and set x, y to the rest.
+        inner_idx = numpy.where(r < r0)[0]
+        outer_idx = numpy.where(r >= r0)[0]
+        x0 = x[inner_idx]
+        y0 = y[inner_idx]
+        x = x[outer_idx]
+        y = y[outer_idx]
+
+        # Store antenna coordinates for the central station.
+        ss_ant_x[0, :] = x0
+        ss_ant_y[0, :] = y0
+        st_ant_x[0, :] = x0
+        st_ant_y[0, :] = y0
+
+        # Find the centre nearest to each antenna for remaining antennas
+        # and store the coordinates.
+        station_count = numpy.zeros(5, dtype='i8')
+        tx = [[], [], [], [], []]
+        ty = [[], [], [], [], []]
+        for a in range(x.shape[0]):
+            dx = x[a] - sx
+            dy = y[a] - sy
+            dr = (dx**2 + dy**2)**0.5
+            # nearest = dr.argsort()
+            # t = 0
+            # station_idx = nearest[t]
+            # while station_count[station_idx] >= num_ant_station:
+            #     t += 1
+            #     station_idx = nearest[t]
+            station_idx = numpy.where(dr == min(dr))[0][0]
+            tx[station_idx].append(x[a])
+            ty[station_idx].append(y[a])
+            # row = station_count[station_idx]
+            # ss_ant_x[station_idx+1, row] = x[a]
+            # ss_ant_y[station_idx+1, row] = y[a]
+            # st_ant_x[station_idx+1, row] = x[a] - sx[station_idx]
+            # st_ant_y[station_idx+1, row] = y[a] - sy[station_idx]
+
+            station_count[station_idx] += 1
+        print(station_count)
+        print(numpy.sum(station_count))
+
+        for p in range(5):
+            txt = numpy.array(tx[p])
+            tyt = numpy.array(ty[p])
+            rs = (numpy.array(tx[p]-sx[p])**2 + numpy.array(ty[p]-sy[p])**2)**0.5
+            sort_idx = numpy.argsort(rs)
+            ss_ant_x[p+1, :] = txt[sort_idx[0:num_ant_station]]
+            ss_ant_y[p+1, :] = tyt[sort_idx[0:num_ant_station]]
+            st_ant_x[p+1, :] = txt[sort_idx[0:num_ant_station]] - sx[p]
+            st_ant_y[p+1, :] = tyt[sort_idx[0:num_ant_station]] - sy[p]
+
+
+        # Write station and super-station folders
+        station_dir = 'station%03i' % i
+        os.makedirs(join(ss_model_dir, station_dir))
+        ss_enu[:, 0] = ss_ant_x.flatten()
+        ss_enu[:, 1] = ss_ant_y.flatten()
+        station_file = join(ss_model_dir, station_dir, 'layout.txt')
+        numpy.savetxt(station_file, ss_enu, fmt='% -16.12f % -16.12f')
+        line1.set_data(ss_enu[:, 0], ss_enu[:, 1])
+        label1.set_text('super station %03i' % i)
+        fig1.savefig(join(ss_model_dir, 'station_%03i.png' % i))
+        ax2.plot(ss_enu[:, 0], ss_enu[:, 1], 'k+', alpha=0.1)
+
+        # Write station folders
+        for j in range(num_stations_per_super_station):
+            station_id = i * num_stations_per_super_station + j
+            station_dir = 'station%03i' % station_id
+            os.makedirs(join(st_model_dir, station_dir))
+            st_enu[:, 0] = st_ant_x[j, :].flatten()
+            st_enu[:, 1] = st_ant_y[j, :].flatten()
+            station_file = join(st_model_dir, station_dir, 'layout.txt')
+            numpy.savetxt(station_file, st_enu, fmt='% -16.12f % -16.12f')
+            # TODO-BM plot station and add to station superposition
+            line3.set_data(st_enu[:, 0], st_enu[:, 1])
+            label3.set_text('station %03i' % station_id)
+            fig3.savefig(join(st_model_dir, 'station_%03i.png' % station_id))
+            ax4.plot(st_enu[:, 0], st_enu[:, 1], 'k+', alpha=0.1)
+
+        for i in range(5):
+            print(i, station_count[i])
+        print(5, len(x0))
+        print("")
+
+
+    fig2.savefig(join(ss_model_dir, 'all_stations.png'))
+    fig4.savefig(join(st_model_dir, 'all_stations.png'))
+
+    ss_layout = numpy.zeros((num_super_stations, 3))
+    numpy.savetxt(join(ss_model_dir, 'layout.txt'), ss_layout,
+                  fmt='%3.1f %3.1f %3.1f')
+    total_stations = num_super_stations * num_stations_per_super_station
+    st_layout = numpy.zeros((total_stations, 3))
+    numpy.savetxt(join(st_model_dir, 'layout.txt'), st_layout,
+                  fmt='%3.1f %3.1f %3.1f')
+
+
+
+
 if __name__ == '__main__':
-    main3()
-    # TODO-BM main4() split area into pentagons?
+    gen_super_stations()
