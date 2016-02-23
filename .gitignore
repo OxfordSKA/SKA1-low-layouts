@@ -1,3 +1,4 @@
 /.idea
 *.pyc
 /beam_patterns/models
+/beam_patterns/beams_*
