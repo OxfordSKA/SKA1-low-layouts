@@ -4,6 +4,7 @@ import subprocess
 import os
 from os.path import join
 import shutil
+import numpy
 
 
 class OskarSettings(object):
@@ -41,28 +42,30 @@ class OskarSettings(object):
                          self.ini, key, str(value)])
 
 
-def create_settings(ini_file, telescope_model, freq_hz, elevation, out_dir):
+def create_settings(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
+                    coord_frame='Equatorial'):
     s = dict()
     s['simulator'] = {
         'double_precision': False,
         'max_sources_per_chunk': 1024
     }
     s['observation'] = {
-        'phase_centre_dec_deg': elevation,
+        'phase_centre_ra_deg': ra,
+        'phase_centre_dec_deg': dec,
+        'start_time_utc': mjd,
         'start_frequency_hz': freq_hz,
-        'start_time_utc': 0.0,
-        'length': 0.0
+        'length': 1.0
     }
     s['telescope'] = {
          'input_directory': telescope_model,
-         'latitude_deg': 90.0,
+         'latitude_deg': -26.697024,
+         'longitude_deg': 116.631289,
          'normalise_beams_at_phase_centre': False,
          'pol_mode': 'Scalar'
     }
     s['beam_pattern'] = {
         'all_stations': True,
-        # 'coordinate_frame': 'Horizon',
-        'coordinate_frame': 'Equatorial',
+        'coordinate_frame': coord_frame,
         'beam_image': {
             'size': 512,
             'fov_deg': 180.0
@@ -87,30 +90,45 @@ def create_settings(ini_file, telescope_model, freq_hz, elevation, out_dir):
     settings.dict_to_ini(s, ini_file, overwrite=True, verbose=True)
 
 
+def main():
+    # Pointings
+    pointings_ = numpy.loadtxt('pointings.txt')
+    idx = [0, 2]  # Selection indices for pointings.
+    az = pointings_[idx, 3]
+    el = pointings_[idx, 4]
+    pointings = zip(pointings_[idx, 0], pointings_[idx, 1], pointings_[idx, 2])
+    num_pointings = len(az)
+
+    # Frequencies
+    freq_hz = [50.0e6, 350.0e6]
+
+    # Telescopes
+    model_dir = 'models'
+    models = ['v4a_fixed_lattice_aligned.tm',
+              'v4a_fixed_lattice_not_aligned.tm']
+
+    # Coord. frames
+    # frames = ['equatorial', 'horizon']
+    frames = ['equatorial']
+
+    ii = 0
+    for t, model in enumerate(models):
+        for frame in frames:
+            for p, (ra, dec, mjd) in enumerate(pointings):
+                for freq in freq_hz:
+                    out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
+                               (ii, t, frame[0], p, freq / 1.0e6))
+                    print('%03i : %s' % (ii, out_dir))
+                    ini_file = 'config_%03i.ini' % ii
+                    create_settings(out_dir, ini_file, mjd, ra, dec, freq,
+                                    model, frame)
+                    if os.path.isdir(out_dir):
+                        shutil.rmtree(out_dir)
+                    os.makedirs(out_dir)
+                    subprocess.call(['oskar_sim_beam_pattern', ini_file])
+                    os.remove(ini_file)
+                    ii += 1
+
+
 if __name__ == '__main__':
-
-    # Create settings.
-    ini_file = 'test.ini'
-    # TODO include pointing frequency and telescope name in the folder?
-    # TODO copy settings to output directory.
-    # out_dir = 'beams_v4a_fixed_lattice_aligned'
-    out_dir = 'beams_v4a_fixed_lattice_not_aligned'
-    telescope_model = join('..', 'oskar_models',
-                           'v4a_fixed_lattice_not_aligned.tm')
-    # telescope_model = join('..', 'oskar_models', 'v4a_random_lattice_aligned.tm')
-    freq_hz = 350.0e6
-    elevation = 90.0
-    create_settings(ini_file, telescope_model, freq_hz, elevation, out_dir)
-
-    # Remove existing output directory.
-    if os.path.isdir(out_dir):
-        shutil.rmtree(out_dir)
-
-    # Create output directory.
-    os.makedirs(out_dir)
-    os.makedirs(join(out_dir, 'e'))
-
-    # Run the beam pattern simulation.
-    subprocess.call(['oskar_sim_beam_pattern', ini_file])
-
-    os.remove(ini_file)
+    main()
