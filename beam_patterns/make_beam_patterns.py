@@ -116,8 +116,11 @@ def main():
         for frame in frames:
             for p, (ra, dec, mjd) in enumerate(pointings):
                 for freq in freq_hz:
+                    if ii >= 1:
+                        continue
                     out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
                                (ii, t, frame[0], p, freq / 1.0e6))
+                    print('=' * 80)
                     print('%03i : %s' % (ii, out_dir))
                     ini_file = 'config_%03i.ini' % ii
                     create_settings(out_dir, ini_file, mjd, ra, dec, freq,
