@@ -9,6 +9,7 @@ import matplotlib.pyplot as pyplot
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import time
+import math
 
 
 class OskarSettings(object):
@@ -94,6 +95,50 @@ def create_settings(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
     settings.dict_to_ini(s, ini_file, overwrite=True, verbose=True)
 
 
+def create_settings_2(out_dir, ini_file, mjd, ra, dec, freq_hz, telescope_model,
+                    coord_frame, imsize, s1, s2):
+    s = dict()
+    s['simulator'] = {
+        'double_precision': False,
+        'max_sources_per_chunk': 8192
+    }
+    s['observation'] = {
+        'phase_centre_ra_deg': ra,
+        'phase_centre_dec_deg': dec,
+        'start_time_utc': mjd,
+        'start_frequency_hz': freq_hz,
+        'length': 1.0
+    }
+    s['telescope'] = {
+         'input_directory': telescope_model,
+         'latitude_deg': -26.697024,
+         'longitude_deg': 116.631289,
+         'normalise_beams_at_phase_centre': False,
+         'pol_mode': 'Scalar'
+    }
+    s['beam_pattern'] = {
+        'all_stations': False,
+        'station_ids': '%i,%i' % (s1, s2),
+        'coordinate_frame': coord_frame,
+        'beam_image': {
+            'size': imsize,
+            'fov_deg': 180.0
+        },
+        'root_path': join(out_dir, 'xb_%i_%i' % (s1, s2)),
+        'output': {
+            'average_time_and_channel': True,
+            'separate_time_and_channel': False
+        },
+        'telescope_outputs': {
+            'fits_image': {
+                'cross_power_stokes_i_amp': True,
+            }
+        },
+    }
+    settings = OskarSettings()
+    settings.dict_to_ini(s, ini_file, overwrite=True, verbose=True)
+
+
 def auto_beam_movie(model_dir, beams_dir, im_size):
     cmap = 'inferno'
     mp4_file = join(beams_dir, 'auto_beams.mp4')
@@ -164,8 +209,9 @@ def auto_beam_movie(model_dir, beams_dir, im_size):
                                   frames=range(num_stations), blit=False)
     if os.path.isfile(mp4_file):
         os.remove(mp4_file)
-    ani.save(mp4_file, fps=25, bitrate=-1, codec='libx264',
-             extra_args=['-pix_fmt', 'yuv420p'])
+    fps_ = min(15, math.ceil(num_stations/15.0))
+    ani.save(mp4_file, fps=fps_, bitrate=-1,
+             codec='libx264', extra_args=['-pix_fmt', 'yuv420p'])
     print('- Movie took %.2f s' % (time.time() - t0))
 
 
@@ -180,7 +226,7 @@ def cross_beam_image(model, out_dir, imsize, min_db):
     norm_data = (data / data_max)
     data_db = 10.0 * numpy.log10(norm_data)
     fig = pyplot.figure(figsize=(8, 8))
-    fig.subplots_adjust(left=0.05, bottom=0.08, right=0.95, top=0.92,
+    fig.subplots_adjust(left=0.05, bottom=0.08, right=0.9, top=0.92,
                         hspace=0.0, wspace=0.05)
     ax1 = fig.add_subplot(111, aspect='equal')
     im = ax1.imshow(data_db, interpolation='nearest', vmin=min_db, vmax=0.0,
@@ -199,10 +245,43 @@ def cross_beam_image(model, out_dir, imsize, min_db):
     fig.savefig(plot_file)
 
 
+def cross_beam_image_2(out_dir, min_db, s1, s2):
+    cmap = 'inferno'
+    plot_file = join(out_dir, 'cross_power_beam_%.1fdb_%i_%i.png'
+                     % (min_db, s1, s2))
+    if os.path.isfile(plot_file):
+        return
+    file_name = join(out_dir, 'xb_%i_%i_TIME_AVG_CHAN_AVG_'
+                              'CROSS_POWER_AMP_I_I.fits' % (s1, s2))
+    data = numpy.squeeze(pyfits.getdata(file_name))
+    data_max = numpy.nanmax(data)
+    norm_data = (data / data_max)
+    data_db = 10.0 * numpy.log10(norm_data)
+    fig = pyplot.figure(figsize=(8, 8))
+    fig.subplots_adjust(left=0.05, bottom=0.08, right=0.9, top=0.92,
+                        hspace=0.0, wspace=0.05)
+    ax1 = fig.add_subplot(111, aspect='equal')
+    im = ax1.imshow(data_db, interpolation='nearest', vmin=min_db, vmax=0.0,
+                    cmap=cmap)
+    divider = make_axes_locatable(ax1)
+    cax2 = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = ax1.figure.colorbar(im, cax=cax2)
+    cbar.set_label('Decibels', fontsize='small')
+    cbar.ax.tick_params(labelsize='small')
+    ax1.axes.get_xaxis().set_ticks([])
+    ax1.axes.get_yaxis().set_ticks([])
+    ax1.set_xlabel('East <-> West', fontsize='small')
+    ax1.set_ylabel('North <-> South', fontsize='small')
+    ax1.grid()
+    ax1.set_title('cross-power beam, stations %i,%i' % (s1, s2),
+                  fontsize='small')
+    fig.savefig(plot_file)
+
+
 def main():
     # Pointings
     pointings_ = numpy.loadtxt('pointings.txt')
-    idx = [0, 2]  # Selection indices for pointings.
+    idx = [2]  # Selection indices for pointings.
     az = pointings_[idx, 3]
     el = pointings_[idx, 4]
     pointings = zip(pointings_[idx, 0], pointings_[idx, 1], pointings_[idx, 2])
@@ -212,15 +291,15 @@ def main():
 
     # Telescopes
     model_dir = 'models'
-    # models = [d for d in os.listdir(model_dir)
-    #           if os.path.isdir(join(model_dir, d))
-    #           and d.endswith('.tm')]
-    # for model in models:
-    #     print("'%s'," % model)
-    models = ['v4a_random_lattice_not_aligned.tm',
-              'v4a_random_positions.tm',
-              'v4a_super_station_random_lattice_not_aligned.tm',
-              'v4a_super_station_random_positions.tm']
+    models = [d for d in os.listdir(model_dir)
+              if os.path.isdir(join(model_dir, d))
+              and d.endswith('.tm')]
+    for i, model in enumerate(models):
+        print('%i %s' % (i, model))
+    # models = ['v4a_random_lattice_not_aligned.tm',
+    #           'v4a_random_positions.tm',
+    #           'v4a_super_station_random_lattice_not_aligned.tm',
+    #           'v4a_super_station_random_positions.tm']
     # Verify models exist
     for t, model in enumerate(models):
         model = join(model_dir, model)
@@ -229,7 +308,8 @@ def main():
             return
 
     # Coord. frames
-    frames = ['equatorial', 'horizon']
+    # frames = ['equatorial', 'horizon']
+    frames = ['horizon']
 
     im_size = 1024
 
@@ -246,6 +326,7 @@ def main():
                     out_dir = ('beams_%03i_t%02i_%c_p%i_%05.1fMHz' %
                                (ii, t, frame[0], p, freq / 1.0e6))
                     ini_file = 'config_%03i.ini' % ii
+                    ini_file_2 = 'config_2_%03i.ini' % ii
                     print('=' * 80)
                     print('%03i/%03i : %s' % (ii + 1, total, out_dir))
                     print(' - model:', model)
@@ -270,6 +351,23 @@ def main():
                     print('= REMOVING %i FITS FILES' % len(fits_files))
                     for ff in fits_files:
                         os.remove(join(out_dir, ff))
+                    # x-power beams
+                    t2 = time.time()
+                    for q in range(10):
+                        create_settings_2(out_dir, ini_file_2, mjd, ra, dec,
+                                          freq, model, frame, im_size, 0, q)
+                        subprocess.call(['oskar_sim_beam_pattern', ini_file_2])
+                        cross_beam_image_2(out_dir, -40, 0, q)
+                        cross_beam_image_2(out_dir, -60, 0, q)
+                    print('= X patterns: %.2f s' % (time.time() - t2))
+                    fits_files = [f for f in os.listdir(out_dir)
+                                  if f.endswith('.fits')
+                                  and os.path.isfile(join(out_dir, f))
+                                  and f.startswith('xb_')]
+                    print('= REMOVING %i XB FITS FILES' % len(fits_files))
+                    for ff in fits_files:
+                        os.remove(join(out_dir, ff))
+                    os.remove(ini_file_2)
                     print('= DONE! %.2f s' % (time.time() - t1))
 
 

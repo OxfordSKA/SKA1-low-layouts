@@ -27,7 +27,8 @@ if __name__ == '__main__':
     models = [d for d in os.listdir(model_dir)
               if os.path.isdir(join(model_dir, d)) and
               d.endswith('.tm') and
-              not '_apod' in d]
+              not '_apod' in d and
+              not '_taylor' in d]
 
     for i, model in enumerate(models):
         model_in = join(model_dir, model)
