@@ -165,17 +165,19 @@ def main():
     arm_offsets = [35.0, 155.0, 275.0]
     num_super_stations_arms = num_arms * core_arm_count
     ss_arm_petal_angle = -360.0 * random(num_super_stations_arms) + 360.0
+    arm_ss_radius = 60.0  # m
 
     # Outer arms (same outer 3 * 12 = 36 stations as v4a)
     outer_arm_count = 12  # Number of super-stations per outer arm
     num_super_stations_outer = num_arms * outer_arm_count
     v4a_ss_enu_file = 'v7ska1lowN1v2rev3R.enu.94x4.fixed.txt'
     ss_petal_angle_outer = -360.0 * random(num_super_stations_outer) + 360.0
+    outer_arm_ss_radius = 80.0  # m
 
     # Stations
     num_stations_per_ss = 6
 
-    out_dir = 'v5a_layout'
+    out_dir = 'v5b_layout'
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
     # ==========================================================================
@@ -183,8 +185,8 @@ def main():
     # == Super-stations
 
     # Generate core spiral arm super-stations
-    v5a_ss_x_arms = numpy.zeros(num_super_stations_arms)
-    v5a_ss_y_arms = numpy.zeros(num_super_stations_arms)
+    v5b_ss_x_arms = numpy.zeros(num_super_stations_arms)
+    v5b_ss_y_arms = numpy.zeros(num_super_stations_arms)
     for i in range(num_arms):
         t = numpy.arange(1, core_arm_count + 1) * delta_theta
         t = numpy.radians(t)
@@ -192,8 +194,8 @@ def main():
         y = a * numpy.exp(b * t) * numpy.sin(t + numpy.radians(arm_offsets[i]))
         i0 = i * core_arm_count
         i1 = i0 + core_arm_count
-        v5a_ss_x_arms[i0:i1] = x
-        v5a_ss_y_arms[i0:i1] = y
+        v5b_ss_x_arms[i0:i1] = x
+        v5b_ss_y_arms[i0:i1] = y
 
     # Load super-station outer spiral arms from the v4a config
     v4a_ss_enu = numpy.loadtxt(v4a_ss_enu_file)
@@ -201,72 +203,83 @@ def main():
     v4a_ss_r = (v4a_ss_enu[:, 0]**2 + v4a_ss_enu[:, 1]**2)**0.5
     sort_idx = numpy.argsort(v4a_ss_r)
     v4a_ss_enu = v4a_ss_enu[sort_idx[::-1], :]
-    v5a_ss_x_outer = v4a_ss_enu[:num_super_stations_outer, 0]
-    v5a_ss_y_outer = v4a_ss_enu[:num_super_stations_outer, 1]
+    v5b_ss_x_outer = v4a_ss_enu[:num_super_stations_outer, 0]
+    v5b_ss_y_outer = v4a_ss_enu[:num_super_stations_outer, 1]
 
     # == Stations
     # Generate core ring stations
     for t in range(num_tries):
         print('.')
         x, y, _ = gridgen(num_stations_core_ring, core_ring_radius * 2.0,
-                          st_radius*2.0)
+                          st_radius * 2.0, 50000)
         if x.shape[0] == num_stations_core_ring:
             break
     if not x.shape[0] == num_stations_core_ring:
         raise RuntimeError('Failed to generate enough stations in the inner '
                            'core. %i / %i generated'
-                           % (x.shape, num_stations_core_ring))
-    v5a_st_x_rings = x
-    v5a_st_y_rings = y
-
+                           % (x.shape[0], num_stations_core_ring))
+    v5b_st_x_rings = x
+    v5b_st_y_rings = y
 
     # Generate core spiral arm stations
-    v5a_st_x_arms = numpy.zeros((num_super_stations_arms,
+    v5b_st_x_arms = numpy.zeros((num_super_stations_arms,
                                  num_stations_per_ss))
-    v5a_st_y_arms = numpy.zeros_like(v5a_st_x_arms)
+    v5b_st_y_arms = numpy.zeros_like(v5b_st_x_arms)
     for i in range(num_super_stations_arms):
-        angles = 360.0 / (num_stations_per_ss - 1) * \
-                 numpy.arange(num_stations_per_ss - 1)
-        x = (st_radius * 2.0) * numpy.cos(numpy.radians(angles))
-        y = (st_radius * 2.0) * numpy.sin(numpy.radians(angles))
-        x, y = rotate_coords(x, y, ss_arm_petal_angle[i])
-        v5a_st_x_arms[i, 1:] = x
-        v5a_st_y_arms[i, 1:] = y
-        v5a_st_x_arms[i, :] += v5a_ss_x_arms[i]
-        v5a_st_y_arms[i, :] += v5a_ss_y_arms[i]
-    v5a_st_x_arms = v5a_st_x_arms.flatten()
-    v5a_st_y_arms = v5a_st_y_arms.flatten()
+        for t in range(num_tries*5):
+            x, y, _ = gridgen(num_stations_per_ss, arm_ss_radius * 2.0,
+                              st_radius * 2.0, 10000)
+            if x.shape[0] == num_stations_per_ss:
+                break
+        if not x.shape[0] == num_stations_per_ss:
+            raise RuntimeError('Failed to generate enough station in core arm '
+                               'super-station %i after %i tries '
+                               '(%i / %i generated).'
+                               % (i, num_tries * 5, x.shape[0],
+                                  num_stations_per_ss))
+        v5b_st_x_arms[i, :] = x
+        v5b_st_y_arms[i, :] = y
+        v5b_st_x_arms[i, :] += v5b_ss_x_arms[i]
+        v5b_st_y_arms[i, :] += v5b_ss_y_arms[i]
+    v5b_st_x_arms = v5b_st_x_arms.flatten()
+    v5b_st_y_arms = v5b_st_y_arms.flatten()
 
     # Generate outer arm stations
-    v5a_st_x_outer = numpy.zeros((num_super_stations_outer, num_stations_per_ss))
-    v5a_st_y_outer = numpy.zeros((num_super_stations_outer, num_stations_per_ss))
+    v5b_st_x_outer = numpy.zeros((num_super_stations_outer, num_stations_per_ss))
+    v5b_st_y_outer = numpy.zeros((num_super_stations_outer, num_stations_per_ss))
     for i in range(num_super_stations_outer):
-        angles = 360.0 / (num_stations_per_ss - 1) * \
-                 numpy.arange(num_stations_per_ss - 1)
-        x = (st_radius * 2.0) * numpy.cos(numpy.radians(angles))
-        y = (st_radius * 2.0) * numpy.sin(numpy.radians(angles))
-        x, y = rotate_coords(x, y, ss_petal_angle_outer[i])
-        v5a_st_x_outer[i, 1:] = x
-        v5a_st_y_outer[i, 1:] = y
-        v5a_st_x_outer[i, :] += v5a_ss_x_outer[i]
-        v5a_st_y_outer[i, :] += v5a_ss_y_outer[i]
-    v5a_st_x_outer = v5a_st_x_outer.flatten()
-    v5a_st_y_outer = v5a_st_y_outer.flatten()
+        for t in range(num_tries*5):
+            x, y, _ = gridgen(num_stations_per_ss, arm_ss_radius * 2.0,
+                              st_radius * 2.0, 10000)
+            if x.shape[0] == num_stations_per_ss:
+                break
+        if not x.shape[0] == num_stations_per_ss:
+            raise RuntimeError('Failed to generate enough station in outer arm '
+                               'super-station %i after %i tries '
+                               '(%i / %i generated).'
+                               % (i, num_tries * 5, x.shape[0],
+                                  num_stations_per_ss))
+        v5b_st_x_outer[i, :] = x
+        v5b_st_y_outer[i, :] = y
+        v5b_st_x_outer[i, :] += v5b_ss_x_outer[i]
+        v5b_st_y_outer[i, :] += v5b_ss_y_outer[i]
+    v5b_st_x_outer = v5b_st_x_outer.flatten()
+    v5b_st_y_outer = v5b_st_y_outer.flatten()
 
     # Concatenate coords.
-    v5a_st_x = numpy.hstack((v5a_st_x_rings, v5a_st_x_arms, v5a_st_x_outer))
-    v5a_st_y = numpy.hstack((v5a_st_y_rings, v5a_st_y_arms, v5a_st_y_outer))
-    # v5a_st_x = numpy.hstack((v5a_st_x_rings, v5a_st_x_arms))
-    # v5a_st_y = numpy.hstack((v5a_st_y_rings, v5a_st_y_arms))
-    # v5a_st_x = v5a_st_x_rings
-    # v5a_st_y = v5a_st_y_rings
+    v5b_st_x = numpy.hstack((v5b_st_x_rings, v5b_st_x_arms, v5b_st_x_outer))
+    v5b_st_y = numpy.hstack((v5b_st_y_rings, v5b_st_y_arms, v5b_st_y_outer))
+    # v5b_st_x = numpy.hstack((v5b_st_x_rings, v5b_st_x_arms))
+    # v5b_st_y = numpy.hstack((v5b_st_y_rings, v5b_st_y_arms))
+    # v5b_st_x = v5b_st_x_rings
+    # v5b_st_y = v5b_st_y_rings
 
     # === Generate layouts ==============================
-    num_stations = v5a_st_x.shape[0]
-    v5a_st_enu = numpy.zeros((num_stations, 3))
-    v5a_st_enu[:, 0] = v5a_st_x
-    v5a_st_enu[:, 1] = v5a_st_y
-    numpy.savetxt(join(out_dir, 'v5a_stations_enu.txt'), v5a_st_enu,
+    num_stations = v5b_st_x.shape[0]
+    v5b_st_enu = numpy.zeros((num_stations, 3))
+    v5b_st_enu[:, 0] = v5b_st_x
+    v5b_st_enu[:, 1] = v5b_st_y
+    numpy.savetxt(join(out_dir, 'v5b_stations_enu.txt'), v5b_st_enu,
                   fmt='% -16.12f % -16.12f % -16.12f')
 
     # ==== Plotting ===========================================================
@@ -281,8 +294,8 @@ def main():
     arm_colors = ['y', 'g', 'r']
     for i in range(num_super_stations_arms):
         q = int(i / core_arm_count)
-        circle = pyplot.Circle((v5a_ss_x_arms[i], v5a_ss_y_arms[i]),
-                               ss_radius, color=arm_colors[q],
+        circle = pyplot.Circle((v5b_ss_x_arms[i], v5b_ss_y_arms[i]),
+                               arm_ss_radius, color=arm_colors[q],
                                fill=True, alpha=0.5, linewidth=0.0)
         ax.add_artist(circle)
 
@@ -290,13 +303,14 @@ def main():
         i0 = q * outer_arm_count
         i1 = i0 + outer_arm_count
         for i in range(i0, i1):
-            circle = pyplot.Circle((v5a_ss_x_outer[i], v5a_ss_y_outer[i]),
-                                   ss_radius, color='c', fill=True, alpha=0.5)
+            circle = pyplot.Circle((v5b_ss_x_outer[i], v5b_ss_y_outer[i]),
+                                   outer_arm_ss_radius, color='c',
+                                   fill=True, alpha=0.5)
             ax.add_artist(circle)
 
     # Plot station positions
-    for i in range(v5a_st_x.shape[0]):
-        circle = pyplot.Circle((v5a_st_x[i], v5a_st_y[i]),
+    for i in range(v5b_st_x.shape[0]):
+        circle = pyplot.Circle((v5b_st_x[i], v5b_st_y[i]),
                                st_radius, color='k', linewidth=1.0,
                                fill=True, alpha=0.2)
         ax.add_artist(circle)
@@ -312,21 +326,21 @@ def main():
     ax.set_xlabel('East [m]')
     ax.set_xlim(-1500, 1500)
     ax.set_ylim(-1500, 1500)
-    pyplot.savefig(join(out_dir, 'v5a_station_layout_zoom_1.5km.png'))
+    pyplot.savefig(join(out_dir, 'v5b_station_layout_zoom_1.5km.png'))
     ax.set_xlim(-3000, 3000)
     ax.set_ylim(-3000, 3000)
-    pyplot.savefig(join(out_dir, 'v5a_station_layout_zoom_3.0km.png'))
+    pyplot.savefig(join(out_dir, 'v5b_station_layout_zoom_3.0km.png'))
     ax.set_xlim(-5000, 5000)
     ax.set_ylim(-5000, 5000)
-    pyplot.savefig(join(out_dir, 'v5a_station_layout_zoom_5.0km.png'))
+    pyplot.savefig(join(out_dir, 'v5b_station_layout_zoom_5.0km.png'))
     ax.set_xlim(-50000, 50000)
     ax.set_ylim(-50000, 50000)
-    pyplot.savefig(join(out_dir, 'v5a_station_layout_50.0km.png'))
+    pyplot.savefig(join(out_dir, 'v5b_station_layout_50.0km.png'))
     pyplot.close(fig)
 
     if uvwsim_found:
-        x = v5a_st_x
-        y = v5a_st_y
+        x = v5b_st_x
+        y = v5b_st_y
         num_stations = x.shape[0]
         z = numpy.zeros_like(x)
         lon = radians(116.63128900)
@@ -343,10 +357,12 @@ def main():
                                            num_baselines, mjd_start,
                                            dt_s)
 
-        layout_utils.plot_hist(uu, vv, join(out_dir, 'v5a_hist.png'),
-                               'v5a snapshot-uv')
+        layout_utils.plot_hist(uu, vv, join(out_dir, 'v5b_hist.png'),
+                               'v5b snapshot-uv')
         layout_utils.plot_uv_dist(uu, vv,
-                                  join(out_dir, 'v5a_snapshot_uv_zenith'))
+                                  join(out_dir, 'v5b_snapshot_uv_zenith'))
+
+
 
 if __name__ == '__main__':
     main()

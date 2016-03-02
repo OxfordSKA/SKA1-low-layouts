@@ -2,3 +2,5 @@
 *.pyc
 /beam_patterns/models
 /beam_patterns/beams_*
+/layouts/v4d_layout
+/layouts/v5*_layout

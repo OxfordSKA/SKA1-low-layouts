@@ -24,6 +24,9 @@ except ImportError:
     print('see: https://github.com/SKA-ScienceDataProcessor/uvwsim, pyuvwsim.rst')
     uvwsim_found = False
 from math import radians
+from os.path import join
+import os
+import layout_utils
 
 
 def rotate_coords(x, y, angle):
@@ -84,6 +87,10 @@ def main():
 
     # Stations
     num_stations_per_ss = 6
+
+    out_dir = 'v4d_layout'
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
     # ==========================================================================
 
     # == Super-stations
@@ -92,14 +99,14 @@ def main():
     v4d_ss_x_rings = numpy.zeros(num_super_stations_rings)
     v4d_ss_y_rings = numpy.zeros(num_super_stations_rings)
     idx = 0
-    for i, n in enumerate(ring_counts):
-        angles = numpy.arange(n) * (360.0 / n)
+    for i, hist in enumerate(ring_counts):
+        angles = numpy.arange(hist) * (360.0 / hist)
         angles += ring_start_angle[i]
         x = ring_radii[i] * numpy.cos(numpy.radians(angles))
         y = ring_radii[i] * numpy.sin(numpy.radians(angles))
-        v4d_ss_x_rings[idx:idx+n] = x
-        v4d_ss_y_rings[idx:idx+n] = y
-        idx += n
+        v4d_ss_x_rings[idx:idx+hist] = x
+        v4d_ss_y_rings[idx:idx+hist] = y
+        idx += hist
 
     # Generate core spiral arm super-stations
     v4d_ss_x_arms = numpy.zeros(num_super_stations_arms)
@@ -186,14 +193,14 @@ def main():
     v4d_st_enu = numpy.zeros((num_stations, 3))
     v4d_st_enu[:, 0] = v4d_st_x
     v4d_st_enu[:, 1] = v4d_st_y
-    numpy.savetxt('v4d_stations_enu.txt', v4d_st_enu,
+    numpy.savetxt(join(out_dir, 'v4d_stations_enu.txt'), v4d_st_enu,
                   fmt='% -16.12f % -16.12f % -16.12f')
 
     num_super_stations = v4d_ss_x.shape[0]
     v4d_ss_enu = numpy.zeros((num_super_stations, 3))
     v4d_ss_enu[:, 0] = v4d_ss_x
     v4d_ss_enu[:, 1] = v4d_ss_y
-    numpy.savetxt('v4d_super_stations_enu.txt', v4d_ss_enu,
+    numpy.savetxt(join(out_dir, 'v4d_super_stations_enu.txt'), v4d_ss_enu,
                   fmt='% -16.12f % -16.12f % -16.12f')
 
     # ==== Plotting ===========================================================
@@ -239,12 +246,20 @@ def main():
     ax.set_xlabel('East [m]')
     ax.set_xlim(-1500, 1500)
     ax.set_ylim(-1500, 1500)
-    pyplot.savefig('v4d_station_layout_zoom.png')
+    pyplot.savefig(join(out_dir, 'v4d_station_layout_zoom_1.5km.png'))
+    ax.set_xlim(-3000, 3000)
+    ax.set_ylim(-3000, 3000)
+    pyplot.savefig(join(out_dir, 'v4d_station_layout_zoom_3.0km.png'))
+    ax.set_xlim(-5000, 5000)
+    ax.set_ylim(-5000, 5000)
+    pyplot.savefig(join(out_dir, 'v4d_station_layout_zoom_5.0km.png'))
     ax.set_xlim(-50000, 50000)
     ax.set_ylim(-50000, 50000)
-    pyplot.savefig('v4d_station_layout.png')
+    pyplot.savefig(join(out_dir, 'v4d_station_layout_50.0km.png'))
+    pyplot.close(fig)
 
     if uvwsim_found:
+        print('generating uv coords...')
         x = v4d_st_x
         y = v4d_st_y
         num_stations = x.shape[0]
@@ -262,25 +277,12 @@ def main():
         uu, vv, ww = generate_baseline_uvw(x, y, z, ra, dec, num_times,
                                            num_baselines, mjd_start,
                                            dt_s)
-        fig = pyplot.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, aspect='equal')
-        ax.plot(uu, vv, 'k.', alpha=0.3, ms=2.0)
-        ax.plot(-uu, -vv, 'k.', alpha=0.3, ms=2.0)
-        ax.set_xlabel('uu [m]')
-        ax.set_ylabel('vv [m]')
-        ax.set_xlim(-3000, 3000)
-        ax.set_ylim(-3000, 3000)
-        pyplot.savefig('v4d_snapshot_uv_zenith.png')
-        ax.set_xlim(-1000, 1000)
-        ax.set_ylim(-1000, 1000)
-        ax.set_xlabel('uu [m]')
-        ax.set_ylabel('vv [m]')
-        pyplot.savefig('v4d_snapshot_uv_zenith_zoom.png')
-        ax.set_xlim(-50000, 50000)
-        ax.set_ylim(-50000, 50000)
-        ax.set_xlabel('uu [m]')
-        ax.set_ylabel('vv [m]')
-        pyplot.savefig('v4d_snapshot_uv_zenith_all.png')
+
+        layout_utils.plot_hist(uu, vv, join(out_dir, 'v4d_hist.png'),
+                               'v4d snapshot-uv')
+        layout_utils.plot_uv_dist(uu, vv,
+                                  join(out_dir, 'v4d_snapshot_uv_zenith'))
+
 
 
 if __name__ == '__main__':
