@@ -14,19 +14,10 @@ Changes:
 from __future__ import print_function
 import numpy
 from numpy.random import random
-import matplotlib.pyplot as pyplot
-try:
-    from pyuvwsim import (load_station_coords, convert_enu_to_ecef,
-                          evaluate_baseline_uvw)
-    uvwsim_found = True
-except ImportError:
-    print('pyuvwsim not found, skipping uvw co-ordiante generation.')
-    print('see: https://github.com/SKA-ScienceDataProcessor/uvwsim, pyuvwsim.rst')
-    uvwsim_found = False
 from math import radians
 from os.path import join
 import os
-import layout_utils
+import matplotlib.pyplot as pyplot
 
 
 def rotate_coords(x, y, angle):
@@ -88,7 +79,7 @@ def main():
     # Stations
     num_stations_per_ss = 6
 
-    out_dir = 'v4d_layout'
+    out_dir = 'v4d.tm'
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
     # ==========================================================================
@@ -193,14 +184,14 @@ def main():
     v4d_st_enu = numpy.zeros((num_stations, 3))
     v4d_st_enu[:, 0] = v4d_st_x
     v4d_st_enu[:, 1] = v4d_st_y
-    numpy.savetxt(join(out_dir, 'v4d_stations_enu.txt'), v4d_st_enu,
+    numpy.savetxt(join(out_dir, 'layout_enu_stations.txt'), v4d_st_enu,
                   fmt='% -16.12f % -16.12f % -16.12f')
 
     num_super_stations = v4d_ss_x.shape[0]
     v4d_ss_enu = numpy.zeros((num_super_stations, 3))
     v4d_ss_enu[:, 0] = v4d_ss_x
     v4d_ss_enu[:, 1] = v4d_ss_y
-    numpy.savetxt(join(out_dir, 'v4d_super_stations_enu.txt'), v4d_ss_enu,
+    numpy.savetxt(join(out_dir, 'layout_enu_super_stations.txt'), v4d_ss_enu,
                   fmt='% -16.12f % -16.12f % -16.12f')
 
     # ==== Plotting ===========================================================
@@ -257,32 +248,6 @@ def main():
     ax.set_ylim(-50000, 50000)
     pyplot.savefig(join(out_dir, 'v4d_station_layout_50.0km.png'))
     pyplot.close(fig)
-
-    if uvwsim_found:
-        print('generating uv coords...')
-        x = v4d_st_x
-        y = v4d_st_y
-        num_stations = x.shape[0]
-        z = numpy.zeros_like(x)
-        lon = radians(116.63128900)
-        lat = radians(-26.69702400)
-        alt = 0.0
-        ra = radians(68.698903779331502)
-        dec = radians(-26.568851215532160)
-        mjd_start = 57443.4375000000
-        dt_s = 0.0
-        num_times = 1
-        num_baselines = num_stations * (num_stations - 1) / 2
-        x, y, z = convert_enu_to_ecef(x, y, z, lon, lat, alt)
-        uu, vv, ww = generate_baseline_uvw(x, y, z, ra, dec, num_times,
-                                           num_baselines, mjd_start,
-                                           dt_s)
-
-        layout_utils.plot_hist(uu, vv, join(out_dir, 'v4d_hist.png'),
-                               'v4d snapshot-uv')
-        layout_utils.plot_uv_dist(uu, vv,
-                                  join(out_dir, 'v4d_snapshot_uv_zenith'))
-
 
 
 if __name__ == '__main__':

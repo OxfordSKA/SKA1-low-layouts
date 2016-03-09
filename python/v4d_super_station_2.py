@@ -119,13 +119,13 @@ def gen_super_stations():
     # =========================================================================
     num_super_stations = 85
     num_stations_per_super_station = 6
-    max_tries_per_station = 3
-    diameter_gridgen = 32.0  # m
-    diameter = 30.5  # m
+    max_tries_per_station = 5
+    diameter_gridgen = 40.0  # m
+    diameter = 35.0  # m
     antenna_diameter = 1.5
-    num_ant_station_gridgen = 200
-    num_ant_station = 180
-    ss_diameter = 93.0
+    num_ant_station_gridgen = 300
+    num_ant_station = 256
+    ss_diameter = 100.0
     st_diameter = diameter
     angles = numpy.arange(num_stations_per_super_station - 1) * \
              (360.0 / float(num_stations_per_super_station - 1))

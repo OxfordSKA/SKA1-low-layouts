@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Script to generate v5a station and super-station coordinates.
+"""Script to generate v5b station and super-station coordinates.
 
 Changes:
     01/03/2016: Initial version.
@@ -116,7 +116,6 @@ def gridgen(num_points, diameter, min_dist, max_trials=1000):
         y = y[0:n]
 
     return x, y, try_count
-
 
 
 def rotate_coords(x, y, angle):
