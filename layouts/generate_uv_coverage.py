@@ -177,14 +177,133 @@ def hist_plot_1(v4d_uv_dist, v5d_uv_dist, bin_width, uv_dist_max,
     ax.set_xlim(0, uv_dist_max)
     ax.set_xlabel('uv-distance (m)')
     ax.set_ylabel('Number')
-    ax.legend(fontsize='small')
+    ax.legend()
     pyplot.savefig(join(out_dir, 'hist_%04.1fm_%06.1fm_v2.png'
                         % (bin_width, uv_dist_max)))
     pyplot.close(fig)
 
 
-def hist_plot_2(v4d_uv_dist, v5d_uv_dist, out_dir):
-    pass
+def hist_plot_2(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir):
+    bin_width = wave_length
+    num_vis = v4d_uv_dist.shape[0]
+    assert(v4d_uv_dist.shape[0] == v5d_uv_dist.shape[0])
+    uv_dist_max = 70.0e3
+    uv_dist_min = 20.0
+    num_bins = int(ceil(uv_dist_max / bin_width))
+    bins = numpy.arange(num_bins) * bin_width
+    v4d_hist, v4d_bin_edges = numpy.histogram(v4d_uv_dist, bins=bins)
+    v5d_hist, v5d_bin_edges = numpy.histogram(v5d_uv_dist, bins=bins)
+    v4d_hist = numpy.array(v4d_hist)
+    v5d_hist = numpy.array(v5d_hist)
+    v4d_bin_widths = numpy.diff(v4d_bin_edges)
+    v5d_bin_widths = numpy.diff(v5d_bin_edges)
+
+    fig = pyplot.figure(figsize=(8, 5))
+    ax = fig.add_subplot(111)
+    x = v4d_bin_edges[:-1] + v4d_bin_widths / 2.0
+    y = numpy.divide(v4d_hist, v4d_bin_widths)
+    ax.loglog(x, y, 'k-', label='v4d', lw=1.5, alpha=0.8)
+    x = v5d_bin_edges[:-1] + v5d_bin_widths / 2.0
+    y = numpy.divide(v5d_hist, v5d_bin_widths)
+    ax.loglog(x, y, 'r-', label='v5d', lw=1.5, alpha=0.6)
+    ax.set_xlim(uv_dist_min, uv_dist_max)
+    ax.set_xlabel('Radius (m)')
+    ax.set_ylabel('Visibility count (m$^{-1}$)')
+    ax.legend()
+    ax.grid()
+    pyplot.savefig(join(out_dir, 'hist_loglog_%04.1fm_%06.1fm.png'
+                        % (bin_width, uv_dist_max)))
+    pyplot.close(fig)
+
+    fig = pyplot.figure(figsize=(8, 5))
+    ax = fig.add_subplot(111)
+    x = v4d_bin_edges[:-1] + v4d_bin_widths / 2.0
+    y = numpy.cumsum(v4d_hist) / float(num_vis)
+    ax.semilogx(x, y, 'k-', label='v4d', lw=1.5, alpha=0.8)
+    x = v5d_bin_edges[:-1] + v5d_bin_widths / 2.0
+    y = numpy.cumsum(v5d_hist) / float(num_vis)
+    ax.semilogx(x, y, 'r-', label='v5d', lw=1.5, alpha=0.6)
+    ax.set_xlim(uv_dist_min, uv_dist_max)
+    ax.set_ylim(0, 1.05)
+    ax.set_xlabel('uv-distance (m)')
+    ax.set_ylabel('Cumulative visibility density')
+    ax.legend(loc=2)
+    ax.grid()
+    v4d_median = numpy.median(v4d_uv_dist)
+    v5d_median = numpy.median(v5d_uv_dist)
+    ax.plot([v4d_median, v4d_median], ax.get_ylim(), 'k:')
+    ax.plot([v5d_median, v5d_median], ax.get_ylim(), 'r--')
+    ax.text(0.02, 0.73, 'v4d median = %.3f km' % (v4d_median / 1.0e3),
+            ha='left', va='center', style='italic', color='k',
+            transform=ax.transAxes)
+    ax.text(0.02, 0.65, 'v5d median = %.3f km' % (v5d_median / 1.0e3),
+            ha='left', va='center', style='italic', color='k',
+            transform=ax.transAxes)
+    pyplot.savefig(join(out_dir, 'hist_cumsum_%04.1fm_%06.1fm.png'
+                        % (bin_width, uv_dist_max)))
+    pyplot.close(fig)
+
+
+def hist_plot_3(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir):
+    bin_width = wave_length
+    num_vis = v4d_uv_dist.shape[0]
+    assert(v4d_uv_dist.shape[0] == v5d_uv_dist.shape[0])
+    uv_dist_max = 70.0e3
+    uv_dist_min = 20.0
+    num_bins = 200
+    bins = numpy.logspace(numpy.log10(uv_dist_min),
+                          numpy.log10(uv_dist_max), num_bins)
+    v4d_hist, v4d_bin_edges = numpy.histogram(v4d_uv_dist, bins=bins)
+    v5d_hist, v5d_bin_edges = numpy.histogram(v5d_uv_dist, bins=bins)
+    v4d_hist = numpy.array(v4d_hist)
+    v5d_hist = numpy.array(v5d_hist)
+    v4d_bin_widths = numpy.diff(v4d_bin_edges)
+    v5d_bin_widths = numpy.diff(v5d_bin_edges)
+
+    fig = pyplot.figure(figsize=(8, 5))
+    ax = fig.add_subplot(111)
+    x = v4d_bin_edges[:-1] + v4d_bin_widths / 2.0
+    y = numpy.divide(v4d_hist, v4d_bin_widths)
+    ax.loglog(x, y, 'k-', label='v4d', lw=1.5, alpha=0.8)
+    x = v5d_bin_edges[:-1] + v5d_bin_widths / 2.0
+    y = numpy.divide(v5d_hist, v5d_bin_widths)
+    ax.loglog(x, y, 'r-', label='v5d', lw=1.5, alpha=0.6)
+    ax.set_xlim(uv_dist_min, uv_dist_max)
+    ax.set_xlabel('Radius (m)')
+    ax.set_ylabel('Visibility count (m$^{-1}$)')
+    ax.legend()
+    ax.grid()
+    pyplot.savefig(join(out_dir, 'hist_loglog_%04.1fm_%06.1fm_log_bins.png'
+                        % (bin_width, uv_dist_max)))
+    pyplot.close(fig)
+
+    fig = pyplot.figure(figsize=(8, 5))
+    ax = fig.add_subplot(111)
+    x = v4d_bin_edges[:-1] + v4d_bin_widths / 2.0
+    y = numpy.cumsum(v4d_hist) / float(num_vis)
+    ax.semilogx(x, y, 'k-', label='v4d', lw=1.5, alpha=0.8)
+    x = v5d_bin_edges[:-1] + v5d_bin_widths / 2.0
+    y = numpy.cumsum(v5d_hist) / float(num_vis)
+    ax.semilogx(x, y, 'r-', label='v5d', lw=1.5, alpha=0.6)
+    ax.set_xlim(uv_dist_min, uv_dist_max)
+    ax.set_ylim(0, 1.05)
+    ax.set_xlabel('uv-distance (m)')
+    ax.set_ylabel('Cumulative visibility density')
+    ax.legend(loc=2)
+    ax.grid()
+    v4d_median = numpy.median(v4d_uv_dist)
+    v5d_median = numpy.median(v5d_uv_dist)
+    ax.plot([v4d_median, v4d_median], ax.get_ylim(), 'k:')
+    ax.plot([v5d_median, v5d_median], ax.get_ylim(), 'r--')
+    ax.text(0.02, 0.73, 'v4d median = %.3f km' % (v4d_median / 1.0e3),
+            ha='left', va='center', style='italic', color='k',
+            transform=ax.transAxes)
+    ax.text(0.02, 0.65, 'v5d median = %.3f km' % (v5d_median / 1.0e3),
+            ha='left', va='center', style='italic', color='k',
+            transform=ax.transAxes)
+    pyplot.savefig(join(out_dir, 'hist_cumsum_%04.1fm_%06.1fm_log_bins.png'
+                        % (bin_width, uv_dist_max)))
+    pyplot.close(fig)
 
 
 def plot_uv_image(uu, vv, cell_size, uv_max, station_radius_m, file_name):
@@ -369,6 +488,182 @@ def plot_uv_images(uu_v4d, vv_v4d, uu_v5d, vv_v5d,
     print('- uv images took %.2f s' % (time.time() - t0))
 
 
+def plot_az_rms(uu_v4d, vv_v4d, wave_length, out_dir):
+    v4d_uv_dist = (uu_v4d**2 + vv_v4d**2)**0.5
+    v4d_uv_dist_idx = numpy.argsort(v4d_uv_dist)
+    v4d_uv_dist = v4d_uv_dist[v4d_uv_dist_idx]
+    uu_v4d = uu_v4d[v4d_uv_dist_idx]
+    vv_v4d = vv_v4d[v4d_uv_dist_idx]
+
+    bin_width = wave_length
+    uv_dist_max = 70.0e3
+    uv_dist_min = 20.0
+    num_bins = int(ceil(uv_dist_max / bin_width))
+    bins = numpy.arange(num_bins) * bin_width
+
+    fig = pyplot.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, aspect='equal')
+    ax.plot(uu_v4d[:1000], vv_v4d[:1000], '+')
+    for i in range(num_bins):
+        if i < 20:
+            circle = pyplot.Circle((0.0, 0.0), bins[i],
+                                   color='r', fill=False, alpha=0.5,
+                                   linewidth=1.0)
+            ax.add_artist(circle)
+
+    pyplot.show()
+
+
+def plot_az_rms_2(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length, out_dir):
+
+    v4d_r = (uu_v4d**2 + vv_v4d**2)**0.5
+    v4d_theta = numpy.arctan2(vv_v4d, uu_v4d)
+    v4d_r_idx = numpy.argsort(v4d_r)
+    v4d_r = v4d_r[v4d_r_idx]
+    v4d_theta = v4d_theta[v4d_r_idx]
+
+    v5d_r = (uu_v5d**2 + vv_v5d**2)**0.5
+    v5d_theta = numpy.arctan2(vv_v5d, uu_v5d)
+    v5d_r_idx = numpy.argsort(v5d_r)
+    v5d_r = v5d_r[v5d_r_idx]
+    v5d_theta = v5d_theta[v5d_r_idx]
+
+    num_bins_r = 200
+    uv_dist_max = 70.0e3
+    uv_dist_min = 20.0
+    r_bins = numpy.logspace(numpy.log10(uv_dist_min),
+                            numpy.log10(uv_dist_max), num_bins_r)
+    num_bins_theta = 100
+    theta_bins = numpy.linspace(-math.pi, math.pi, num_bins_theta)
+
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.semilogx(v4d_r, v4d_theta, 'k.', alpha=0.3, ms=2.0)
+    image_v4d = numpy.zeros((num_bins_theta-1, num_bins_r-1))
+    for i in range(num_bins_r-1):
+        rb_idx = numpy.where(numpy.logical_and(
+            numpy.greater(v4d_r, r_bins[i]),
+            numpy.less_equal(v4d_r, r_bins[i+1])))[0]
+        rb_theta = v4d_theta[rb_idx]
+        for j in range(num_bins_theta-1):
+            tb_idx = numpy.where(numpy.logical_and(
+                numpy.greater(rb_theta, theta_bins[j]),
+                numpy.less_equal(rb_theta, theta_bins[j+1])))[0]
+            image_v4d[j, i] = tb_idx.shape[0]
+    ax.set_xlim(uv_dist_min, uv_dist_max)
+    ax.set_ylim(-math.pi, math.pi)
+    ax.set_xlabel('Radius [m]')
+    ax.set_ylabel('Azimuth [radians]')
+    pyplot.savefig(join(out_dir, 'scatter_v4d_r_theta.png'))
+    pyplot.close(fig)
+
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.semilogx(v5d_r, v5d_theta, 'k.', alpha=0.3, ms=2.0)
+    image_v5d = numpy.zeros((num_bins_theta-1, num_bins_r-1))
+    for i in range(num_bins_r-1):
+        rb_idx = numpy.where(numpy.logical_and(
+            numpy.greater(v5d_r, r_bins[i]),
+            numpy.less_equal(v5d_r, r_bins[i+1])))[0]
+        rb_theta = v5d_theta[rb_idx]
+        for j in range(num_bins_theta-1):
+            tb_idx = numpy.where(numpy.logical_and(
+                numpy.greater(rb_theta, theta_bins[j]),
+                numpy.less_equal(rb_theta, theta_bins[j+1])))[0]
+            image_v5d[j, i] = tb_idx.shape[0]
+    ax.set_xlim(uv_dist_min, uv_dist_max)
+    ax.set_ylim(-math.pi, math.pi)
+    ax.set_xlabel('Radius [m]')
+    ax.set_ylabel('Azimuth [radians]')
+    pyplot.savefig(join(out_dir, 'scatter_v5d_r_theta.png'))
+    pyplot.close(fig)
+
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.07)
+    im = ax.imshow(numpy.flipud(image_v4d), interpolation='nearest', cmap='gray_r',
+                   norm=LogNorm(vmin=1.0, vmax=image_v4d.max()))
+    cbar = ax.figure.colorbar(im, cax=cax)
+    cbar.ax.tick_params(labelsize='small')
+    cbar.set_label('uv count', fontsize='small')
+    ax.set_xlabel('Radius [m]', fontsize='small')
+    ax.set_ylabel('Azimuth [radians]', fontsize='small')
+    ax.tick_params(axis='both', which='major', labelsize='small')
+    ax.tick_params(axis='both', which='minor', labelsize='x-small')
+    ax.set_xlabel('Radius')
+    ax.set_ylabel('Azimuth')
+    pyplot.savefig(join(out_dir, 'scatter_v4d_r_theta_image.png'))
+    pyplot.close(fig)
+
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.07)
+    im = ax.imshow(numpy.flipud(image_v5d), interpolation='nearest', cmap='gray_r',
+                   norm=LogNorm(vmin=1.0, vmax=image_v5d.max()))
+    cbar = ax.figure.colorbar(im, cax=cax)
+    cbar.ax.tick_params(labelsize='small')
+    cbar.set_label('uv count', fontsize='small')
+    ax.set_xlabel('Radius [m]', fontsize='small')
+    ax.set_ylabel('Azimuth [radians]', fontsize='small')
+    ax.tick_params(axis='both', which='major', labelsize='small')
+    ax.tick_params(axis='both', which='minor', labelsize='x-small')
+    ax.set_xlabel('Radius')
+    ax.set_ylabel('Azimuth')
+    pyplot.savefig(join(out_dir, 'scatter_v5d_r_theta_image.png'))
+    pyplot.close(fig)
+
+    az_rms_v4d = numpy.std(image_v4d, axis=0)
+    az_rms_v5d = numpy.std(image_v5d, axis=0)
+    rx = r_bins[:-1] + numpy.diff(r_bins) / 2.0
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.loglog(rx, az_rms_v4d, 'k-', label='v4d')
+    ax.loglog(rx, az_rms_v5d, 'r-', label='v5d')
+    ax.plot([35, 35], ax.get_ylim(), '--')
+    ax.legend()
+    ax.set_xlabel('Radius [m]')
+    ax.set_ylabel('uv count RMS')
+    pyplot.savefig(join(out_dir, 'theta_rms.png'))
+    pyplot.close(fig)
+
+    az_sum_v4d = numpy.sum(image_v4d, axis=0)
+    az_sum_v5d = numpy.sum(image_v5d, axis=0)
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    ax.loglog(rx, az_sum_v4d, 'k-', label='v4d')
+    ax.loglog(rx, az_sum_v5d, 'r-', label='v5d')
+    # ax.plot([35, 35], ax.get_ylim(), 'b:')
+    ax.legend()
+    ax.set_xlabel('Radius [m]')
+    ax.set_ylabel('uv count sum')
+    pyplot.savefig(join(out_dir, 'theta_sum.png'))
+    pyplot.close(fig)
+
+    rx = r_bins[:-1] + numpy.diff(r_bins) / 2.0
+    fig = pyplot.figure(figsize=(12, 6))
+    ax = fig.add_subplot(111)
+    idx_non_zero_v4d = numpy.where(az_sum_v4d > 0.0)
+    idx_non_zero_v5d = numpy.where(az_sum_v5d > 0.0)
+    az_rms_v4d = az_rms_v4d[idx_non_zero_v4d]
+    az_rms_v5d = az_rms_v5d[idx_non_zero_v5d]
+    az_sum_v4d = az_sum_v4d[idx_non_zero_v4d]
+    az_sum_v5d = az_sum_v5d[idx_non_zero_v5d]
+    ax.loglog(rx[idx_non_zero_v4d], numpy.divide(az_rms_v4d, az_sum_v4d),
+              'k-', label='v4d')
+    ax.loglog(rx[idx_non_zero_v5d], numpy.divide(az_rms_v5d, az_sum_v5d),
+              'r-', label='v5d')
+    # ax.plot([35, 35], ax.get_ylim(), 'b:')
+    ax.legend(loc=4)
+    ax.set_xlabel('Radius [m]')
+    ax.set_ylabel('uv count rms / uv count sum')
+    pyplot.savefig(join(out_dir, 'theta_norm_rms.png'))
+    pyplot.close(fig)
+
+
+
+
 def main():
     # Load station positions
     t0 = time.time()
@@ -424,29 +719,32 @@ def main():
     print('- coordinate generation took %.2f s' % (time.time() - t0))
     print('- num vis = %i' % uu_v4d.shape[0])
 
-    t0 = time.time()
-    uv_plot(uu_v4d, vv_v4d, uu_v5d, vv_v5d, out_dir)
-    print('- uv scatter plot took %.2f s' % (time.time() - t0))
-
-    t0 = time.time()
-    v4d_uv_dist = (uu_v4d**2 + vv_v4d**2)**0.5
-    v4d_uv_dist.sort()
-    v5d_uv_dist = (uu_v5d**2 + vv_v5d**2)**0.5
-    v5d_uv_dist.sort()
-    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 300.0, out_dir)
-    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 5.0, 1500.0, out_dir)
-    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 1500.0, out_dir)
-    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 10.0, 3000.0, out_dir)
-    print('- histograms took %.2f s' % (time.time() - t0))
-
-    plot_uv_images(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length,
-                   station_radius_m, out_dir)
-
+    # t0 = time.time()
+    # uv_plot(uu_v4d, vv_v4d, uu_v5d, vv_v5d, out_dir)
+    # print('- uv scatter plot took %.2f s' % (time.time() - t0))
+    #
+    # t0 = time.time()
+    # v4d_uv_dist = (uu_v4d**2 + vv_v4d**2)**0.5
+    # v4d_uv_dist.sort()
+    # v5d_uv_dist = (uu_v5d**2 + vv_v5d**2)**0.5
+    # v5d_uv_dist.sort()
+    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 300.0, out_dir)
+    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 5.0, 1500.0, out_dir)
+    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 1500.0, out_dir)
+    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 10.0, 3000.0, out_dir)
+    # print('- histograms took %.2f s' % (time.time() - t0))
+    #
+    # hist_plot_2(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir)
+    # hist_plot_3(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir)
+    #
+    # plot_uv_images(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length,
+    #                station_radius_m, out_dir)
+    #
     # make_psf_images(uu_v4d, vv_v4d, ww_v4d, uu_v5d, vv_v5d, ww_v5d, ra, dec,
     #                 freq, out_dir)
 
-    # TODO-BM: Histogram (log bin growth...)
-    # TODO-BM: Azimuthal metric?
+    # plot_az_rms(uu_v4d, vv_v4d, wave_length, out_dir)
+    plot_az_rms_2(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length, out_dir)
 
 
 if __name__ == '__main__':
