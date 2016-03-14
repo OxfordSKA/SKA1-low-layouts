@@ -63,7 +63,7 @@ def save_fits_image(file_name, image, cell_size_deg, ra0, dec0, freq_hz):
     pyfits.writeto(file_name, data, header)
 
 
-def plot_layouts(v4d, v5d, station_radius_m):
+def plot_layouts(v4d, v5d, station_radius_m, out_dir):
     fig = pyplot.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
     for i in range(v4d.shape[0]):
@@ -71,28 +71,55 @@ def plot_layouts(v4d, v5d, station_radius_m):
                                color='b', fill=True, alpha=0.5,
                                linewidth=0.0)
         ax.add_artist(circle)
-    ax.set_xlim(-1500, 1500)
-    ax.set_ylim(-1500, 1500)
-    ax.set_title('v4d')
     ax.set_xlabel('East [m]')
     ax.set_ylabel('North [m]')
     ax.grid(True)
-    pyplot.show()
+    ax.set_xlim(-2000, 2000)
+    ax.set_ylim(-2000, 2000)
+    pyplot.savefig(join(out_dir, 'v4d_layout_2km.png'))
+    pyplot.close(fig)
 
     fig = pyplot.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
-    for i in range(v4d.shape[0]):
+    for i in range(v5d.shape[0]):
         circle = pyplot.Circle((v5d[i, 0], v5d[i, 1]), station_radius_m,
                                color='b', fill=True, alpha=0.5,
                                linewidth=0.0)
         ax.add_artist(circle)
-    ax.set_xlim(-1500, 1500)
-    ax.set_ylim(-1500, 1500)
-    ax.set_title('v5d')
     ax.set_xlabel('East [m]')
     ax.set_ylabel('North [m]')
     ax.grid(True)
-    pyplot.show()
+    ax.set_xlim(-2000, 2000)
+    ax.set_ylim(-2000, 2000)
+    pyplot.savefig(join(out_dir, 'v5d_layout_2km.png'))
+    pyplot.close(fig)
+
+    fig = pyplot.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111)
+    for i in range(v4d.shape[0]):
+        circle = pyplot.Circle((v4d[i, 0], v4d[i, 1]), station_radius_m,
+                               color='k', fill=True, alpha=0.5,
+                               linewidth=0.0)
+        ax.add_artist(circle)
+    for i in range(v5d.shape[0]):
+        circle = pyplot.Circle((v5d[i, 0], v5d[i, 1]), station_radius_m,
+                               color='r', fill=True, alpha=0.5,
+                               linewidth=0.0)
+        ax.add_artist(circle)
+    ax.set_xlabel('East [m]')
+    ax.set_ylabel('North [m]')
+    ax.set_title('v4d = black, v5d = red')
+    ax.grid(True)
+    ax.set_xlim(-1000, 1000)
+    ax.set_ylim(-1000, 1000)
+    pyplot.savefig(join(out_dir, 'v4d_v5d_layout_1km.png'))
+    ax.set_xlim(-2000, 2000)
+    ax.set_ylim(-2000, 2000)
+    pyplot.savefig(join(out_dir, 'v4d_v5d_layout_2km.png'))
+    ax.set_xlim(-5000, 5000)
+    ax.set_ylim(-5000, 5000)
+    pyplot.savefig(join(out_dir, 'v4d_v5d_layout_5km.png'))
+    pyplot.close(fig)
 
 
 def uv_plot(uu_v4d, vv_v4d, uu_v5d, vv_v5d, out_dir):
@@ -354,17 +381,17 @@ def plot_uv_image(uu, vv, cell_size, uv_max, station_radius_m, file_name):
     pyplot.savefig(file_name + '_%04.1f_%05.1fm.png' % (cell_size, uv_max))
     pyplot.close(fig)
 
-    image /= image.max()
     fig = pyplot.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, aspect='equal')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.07)
     im = ax.imshow(image, interpolation='nearest', extent=extent,
-                   cmap='gray_r', norm=LogNorm(vmin=0.01, vmax=1.0))
-    t = [0.01, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+                   cmap='gray_r', norm=LogNorm(vmin=1.0, vmax=image.max()))
+    # t = numpy.logspace(numpy.log10(1.0), numpy.log10(image.max()), 7)
+    t = numpy.linspace(1.0, image.max(), 7)
     cbar = ax.figure.colorbar(im, cax=cax, ticks=t, format='%.2f')
     cbar.ax.tick_params(labelsize='small')
-    cbar.set_label('normalised uv count', fontsize='small')
+    cbar.set_label('uv count', fontsize='small')
     ax.set_xlabel('uu [m]', fontsize='small')
     ax.set_ylabel('vv [m]', fontsize='small')
     ax.tick_params(axis='both', which='major', labelsize='small')
@@ -662,8 +689,6 @@ def plot_az_rms_2(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length, out_dir):
     pyplot.close(fig)
 
 
-
-
 def main():
     # Load station positions
     t0 = time.time()
@@ -685,7 +710,7 @@ def main():
     dec = radians(-26.568851215532160)
     mjd_mid = 57443.4375000000
 
-    snapshot = True
+    snapshot = False
     if snapshot:
         mjd_start = mjd_mid
         obs_length = 0.0
@@ -705,6 +730,8 @@ def main():
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
 
+    plot_layouts(v4d, v5d, station_radius_m, out_dir)
+
     t0 = time.time()
     x, y, z = convert_enu_to_ecef(v4d[:, 0], v4d[:, 1], v4d[:, 2],
                                   lon, lat, alt)
@@ -719,29 +746,29 @@ def main():
     print('- coordinate generation took %.2f s' % (time.time() - t0))
     print('- num vis = %i' % uu_v4d.shape[0])
 
-    # t0 = time.time()
-    # uv_plot(uu_v4d, vv_v4d, uu_v5d, vv_v5d, out_dir)
-    # print('- uv scatter plot took %.2f s' % (time.time() - t0))
-    #
-    # t0 = time.time()
-    # v4d_uv_dist = (uu_v4d**2 + vv_v4d**2)**0.5
-    # v4d_uv_dist.sort()
-    # v5d_uv_dist = (uu_v5d**2 + vv_v5d**2)**0.5
-    # v5d_uv_dist.sort()
-    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 300.0, out_dir)
-    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 5.0, 1500.0, out_dir)
-    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 1500.0, out_dir)
-    # hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 10.0, 3000.0, out_dir)
-    # print('- histograms took %.2f s' % (time.time() - t0))
-    #
-    # hist_plot_2(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir)
-    # hist_plot_3(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir)
-    #
-    # plot_uv_images(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length,
-    #                station_radius_m, out_dir)
-    #
-    # make_psf_images(uu_v4d, vv_v4d, ww_v4d, uu_v5d, vv_v5d, ww_v5d, ra, dec,
-    #                 freq, out_dir)
+    t0 = time.time()
+    uv_plot(uu_v4d, vv_v4d, uu_v5d, vv_v5d, out_dir)
+    print('- uv scatter plot took %.2f s' % (time.time() - t0))
+
+    t0 = time.time()
+    v4d_uv_dist = (uu_v4d**2 + vv_v4d**2)**0.5
+    v4d_uv_dist.sort()
+    v5d_uv_dist = (uu_v5d**2 + vv_v5d**2)**0.5
+    v5d_uv_dist.sort()
+    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 300.0, out_dir)
+    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 5.0, 1500.0, out_dir)
+    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length, 1500.0, out_dir)
+    hist_plot_1(v4d_uv_dist, v5d_uv_dist, wave_length * 10.0, 3000.0, out_dir)
+    print('- histograms took %.2f s' % (time.time() - t0))
+
+    hist_plot_2(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir)
+    hist_plot_3(v4d_uv_dist, v5d_uv_dist, wave_length, out_dir)
+
+    plot_uv_images(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length,
+                   station_radius_m, out_dir)
+
+    make_psf_images(uu_v4d, vv_v4d, ww_v4d, uu_v5d, vv_v5d, ww_v5d, ra, dec,
+                    freq, out_dir)
 
     # plot_az_rms(uu_v4d, vv_v4d, wave_length, out_dir)
     plot_az_rms_2(uu_v4d, vv_v4d, uu_v5d, vv_v5d, wave_length, out_dir)

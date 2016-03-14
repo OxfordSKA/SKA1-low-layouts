@@ -347,7 +347,7 @@ def gridgen(num_points, diameter, min_dist, max_trials=1000):
     grid_size = min(100, int(round(float(diameter) / min_dist)))
     grid_cell = float(diameter) / grid_size  # Grid sector cell size
     scale = 1.0 / grid_cell  # Scaling onto the sector grid.
-    check_width = 2
+    check_width = 1
 
     r = diameter / 2.0  # Radius
     r_sq = r**2  # Radius, squared
