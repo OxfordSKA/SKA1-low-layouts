@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Script to generate v5d station coordinates.
+"""Script to generate v4o1 station coordinates.
 
 Changes:
     04/03/2016: Initial version.
@@ -236,8 +236,8 @@ def plot_layout(x_core, y_core, x_arm, y_arm, x_arm_2, y_arm_2,
         ax.add_artist(circle)
     for i in range(x_arm_outer.shape[0]):
         circle = pyplot.Circle((x_arm_outer[i], y_arm_outer[i]),
-                               station_radius_m, color='y',
-                               fill=True, alpha=0.4, linewidth=1.0)
+                               station_radius_m, color='k',
+                               fill=True, alpha=0.6, linewidth=1.0)
         ax.add_artist(circle)
 
     ax.grid(which='both')
@@ -254,12 +254,21 @@ def plot_layout(x_core, y_core, x_arm, y_arm, x_arm_2, y_arm_2,
     ax.set_xlim(-2000, 2000)
     ax.set_ylim(-2000, 2000)
     pyplot.savefig(join(out_dir, 'layout_02.0km.png'))
+    ax.set_xlim(-2000, 2000)
+    ax.set_ylim(-2000, 2000)
+    pyplot.savefig(join(out_dir, 'layout_02.0km.png'))
     ax.set_xlim(-3000, 3000)
     ax.set_ylim(-3000, 3000)
     pyplot.savefig(join(out_dir, 'layout_03.0km.png'))
     ax.set_xlim(-5000, 5000)
     ax.set_ylim(-5000, 5000)
     pyplot.savefig(join(out_dir, 'layout_05.0km.png'))
+    ax.set_xlim(-10000, 10000)
+    ax.set_ylim(-10000, 10000)
+    pyplot.savefig(join(out_dir, 'layout_10.0km.png'))
+    ax.set_xlim(-15000, 15000)
+    ax.set_ylim(-15000, 15000)
+    pyplot.savefig(join(out_dir, 'layout_15.0km.png'))
     ax.set_xlim(-50000, 50000)
     ax.set_ylim(-50000, 50000)
     pyplot.savefig(join(out_dir, 'layout_50.0km.png'))
@@ -314,7 +323,7 @@ def main():
     v4a_ss_enu_file = 'v7ska1lowN1v2rev3R.enu.94x4.fixed.txt'
     outer_arm_cluster_radius = 80.0
 
-    out_dir = 'v5d.tm'
+    out_dir = 'v4o1.tm'
     # =========================================================================
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
