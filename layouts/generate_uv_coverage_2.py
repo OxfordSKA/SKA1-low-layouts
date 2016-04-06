@@ -21,7 +21,13 @@ try:
 except ImportError:
     print('OSKAR python imager not found, PSF images wont be made.')
     oskar_imager_found = False
+
 from plotting_psf import plot_psf
+from plotting_layout import plot_layouts
+from plotting_uv_scatter import uv_plot
+from plotting_uv_hist import plot_uv_hist
+from plotting_uv_image import plot_uv_images
+from plotting_uv_az import plot_az_rms_2
 
 
 def main():
@@ -62,12 +68,8 @@ def main():
 
     num_baselines = num_stations * (num_stations - 1) / 2
     out_dir = 'uv_%3.1fh' % (obs_length / 3600.0)
-    if os.path.exists(out_dir):
-        shutil.rmtree(out_dir)
-    # if not os.path.isdir(out_dir):
-    #     os.makedirs(out_dir)
 
-    # plot_layouts(v4d, v4o1, station_radius_m, out_dir)
+    # UV coordinate generation ================================================
     t0 = time.time()
     x, y, z = convert_enu_to_ecef(v4d[:, 0], v4d[:, 1], v4d[:, 2],
                                   lon, lat, alt)
@@ -82,8 +84,21 @@ def main():
     print('- coordinate generation took %.2f s' % (time.time() - t0))
     print('- num vis = %i' % uu_v4d.shape[0])
 
-    plot_psf(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1,
-             freq, join(out_dir, 'psf'))
+    # TODO-BM Generate the PB image needed to convolve with the uv distribution.
+
+    # Plotting ===============================================================
+    if os.path.exists(out_dir):
+        shutil.rmtree(out_dir)
+    plot_layouts(v4d, v4o1, station_radius_m, join(out_dir, 'layouts'))
+    plot_psf(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1, freq,
+             join(out_dir, 'psf'))
+    uv_plot(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, join(out_dir, 'uv_scatter'))
+    plot_uv_hist(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
+                 join(out_dir, 'uv_hist'))
+    plot_uv_images(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
+                   station_radius_m, join(out_dir, 'uv_images'))
+    plot_az_rms_2(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
+                  join(out_dir, 'uv_az'))
 
 
 if __name__ == '__main__':

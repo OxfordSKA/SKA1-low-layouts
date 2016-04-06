@@ -4,8 +4,8 @@ from os.path import join
 
 import math
 import numpy
-import matplotlib.pyplot as pyplot
 from math import radians, ceil
+import matplotlib.pyplot as pyplot
 from matplotlib.colors import LogNorm, SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 try:

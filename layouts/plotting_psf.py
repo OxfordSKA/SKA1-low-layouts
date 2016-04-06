@@ -25,7 +25,7 @@ def plot_psf(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1,
     psf_v4d = make_psf(uu_v4d, vv_v4d, ww_v4d, freq, 15.0, 1024)
     psf_v4o1 = make_psf(uu_v4o1, vv_v4o1, ww_v4o1, freq, 15.0, 1024)
     plot_psf_images(psf_v4d, psf_v4o1, out_dir)
-    plot_psf_r_ave(psf_v4d, psf_v4o1, out_dir)
+    plot_psf_az_ave(psf_v4d, psf_v4o1, out_dir)
     print('- PSF plotting took %.2f s' % (time.time() - t0))
 
 
@@ -36,7 +36,7 @@ def image_coords(im_size, lm_inc):
     return x, y, r
 
 
-def bin_r_ave_psf(x, y, num_bins, im_size, lm_inc):
+def bin_az_ave_psf(x, y, num_bins, im_size, lm_inc):
     abs_y = numpy.abs(y)
     y_max = numpy.nanmax(abs_y)
     y_db = 10.0 * numpy.log10(abs_y / y_max)
@@ -60,7 +60,7 @@ def bin_r_ave_psf(x, y, num_bins, im_size, lm_inc):
     return bins, y_db
 
 
-def plot_psf_r_ave(psf_v4d, psf_v4o1, out_dir):
+def plot_psf_az_ave(psf_v4d, psf_v4o1, out_dir):
 
     image_v4d = psf_v4d['image']
     image_v4o1 = psf_v4o1['image']
@@ -80,8 +80,8 @@ def plot_psf_r_ave(psf_v4d, psf_v4o1, out_dir):
     y_v4o1 = y_v4o1[sort_idx]
 
     # Bin
-    bins_v4d, y_v4d_db = bin_r_ave_psf(x, y_v4d, num_bins, im_size, lm_inc)
-    bins_v4o1, y_v4o1_db = bin_r_ave_psf(x, y_v4o1, num_bins, im_size, lm_inc)
+    bins_v4d, y_v4d_db = bin_az_ave_psf(x, y_v4d, num_bins, im_size, lm_inc)
+    bins_v4o1, y_v4o1_db = bin_az_ave_psf(x, y_v4o1, num_bins, im_size, lm_inc)
 
     # Plot with linear scale
     fig = pyplot.figure(figsize=(8, 8))
@@ -104,7 +104,7 @@ def plot_psf_r_ave(psf_v4d, psf_v4o1, out_dir):
     ax.set_ylabel('Radially averaged PSF')
     ax.legend()
     ax.grid()
-    pyplot.savefig(join(out_dir, 'r_ave_%03.1f_lin.png' % fov))
+    pyplot.savefig(join(out_dir, 'az_ave_%03.1f_lin.png' % fov))
     pyplot.close(fig)
 
     # Plot with log scale
@@ -129,7 +129,7 @@ def plot_psf_r_ave(psf_v4d, psf_v4o1, out_dir):
     ax.grid()
     ax.set_yscale('log', noposy='clip')
     ax.set_ylim(1.0e-5, 1.0)
-    pyplot.savefig(join(out_dir, 'r_ave_%03.1f_log.png' % fov))
+    pyplot.savefig(join(out_dir, 'az_ave_%03.1f_log.png' % fov))
     pyplot.close(fig)
 
 
