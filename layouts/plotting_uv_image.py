@@ -113,3 +113,5 @@ def plot_uv_image(uu, vv, cell_size, uv_max, station_radius_m, file_name):
     ax.set_ylim(-uv_max, uv_max)
     pyplot.savefig(file_name + '_%04.1f_%05.1fm_log.png' % (cell_size, uv_max))
     pyplot.close(fig)
+
+    return image, extent

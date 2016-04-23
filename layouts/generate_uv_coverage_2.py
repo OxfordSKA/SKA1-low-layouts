@@ -51,7 +51,7 @@ def main():
     dec = radians(-26.568851215532160)
     mjd_mid = 57443.4375000000
 
-    snapshot = True
+    snapshot = False
     if snapshot:
         mjd_start = mjd_mid
         obs_length = 0.0
@@ -83,8 +83,6 @@ def main():
                               mjd_start, dt_s)
     print('- coordinate generation took %.2f s' % (time.time() - t0))
     print('- num vis = %i' % uu_v4d.shape[0])
-
-    # TODO-BM Generate the PB image needed to convolve with the uv distribution.
 
     # Plotting ===============================================================
     if os.path.exists(out_dir):

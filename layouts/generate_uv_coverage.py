@@ -851,6 +851,13 @@ def plot_az_rms_2(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length, out_dir):
 
 
 def main():
+    print('*' * 80)
+    print('*' * 80)
+    print('THIS SCRIPT IS DEPRECATED IN FAVOUR OF: generate_uv_coverage_2.py')
+    print('*' * 80)
+    print('*' * 80)
+    return
+
     # Load station positions
     t0 = time.time()
     v4d_file = join('v4d.tm', 'layout_enu_stations.txt')
@@ -925,8 +932,8 @@ def main():
     # hist_plot_2(v4d_uv_dist, v4o1_uv_dist, wave_length, out_dir)
     # hist_plot_3(v4d_uv_dist, v4o1_uv_dist, wave_length, out_dir)
     #
-    # plot_uv_images(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
-    #                station_radius_m, out_dir)
+    plot_uv_images(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
+                   station_radius_m, out_dir)
 
     make_psf_images(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1, ra, dec,
                     freq, out_dir)

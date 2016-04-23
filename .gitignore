@@ -4,3 +4,8 @@
 /beam_patterns/beams_*
 /layouts/v4d_layout
 /layouts/v5*_layout
+/layouts/beams_*
+/layouts/TEMP_UV
+/layouts/uv_*
+/layouts/stations.tm
+/layouts/*.tm

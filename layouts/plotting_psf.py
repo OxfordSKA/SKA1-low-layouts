@@ -22,8 +22,8 @@ def plot_psf(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1,
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
     t0 = time.time()
-    psf_v4d = make_psf(uu_v4d, vv_v4d, ww_v4d, freq, 15.0, 1024)
-    psf_v4o1 = make_psf(uu_v4o1, vv_v4o1, ww_v4o1, freq, 15.0, 1024)
+    psf_v4d = make_psf(uu_v4d, vv_v4d, ww_v4d, freq, 60.0, 8192)
+    psf_v4o1 = make_psf(uu_v4o1, vv_v4o1, ww_v4o1, freq, 60.0, 8192)
     plot_psf_images(psf_v4d, psf_v4o1, out_dir)
     plot_psf_az_ave(psf_v4d, psf_v4o1, out_dir)
     print('- PSF plotting took %.2f s' % (time.time() - t0))
@@ -141,7 +141,9 @@ def make_psf(uu, vv, ww, freq, fov, im_size):
     ww_ = ww / wave_length
     amp = numpy.ones(uu.shape, dtype='c16')
     weight = numpy.ones(uu.shape, dtype='f8')
+    t0 = time.time()
     image = imager.make_image(uu_, vv_, ww_, amp, weight, fov, im_size)
+    print('Time taken to make PSF image = %.2f s' % (time.time() - t0))
     cell = math.degrees(imager.fov_to_cellsize(math.radians(fov), im_size))
     lm_max = math.sin(0.5 * math.radians(fov))
     lm_inc = (2.0 * lm_max) / im_size
