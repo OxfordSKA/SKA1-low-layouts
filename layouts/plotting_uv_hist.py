@@ -15,12 +15,12 @@ def plot_uv_hist(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length, out_dir):
     v4d_uv_dist.sort()
     v4o1_uv_dist = (uu_v4o1**2 + vv_v4o1**2)**0.5
     v4o1_uv_dist.sort()
-    hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length, 300.0, out_dir)
-    hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length * 5.0, 1500.0, out_dir)
-    hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length, 1500.0, out_dir)
-    hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length * 10.0, 3000.0, out_dir)
-    hist_plot_2(v4d_uv_dist, v4o1_uv_dist, wave_length, out_dir)
-    hist_plot_3(v4d_uv_dist, v4o1_uv_dist, wave_length, out_dir)
+    hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length, 800.0, out_dir)
+    # hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length * 5.0, 1500.0, out_dir)
+    # hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length, 1500.0, out_dir)
+    # hist_plot_1(v4d_uv_dist, v4o1_uv_dist, wave_length * 10.0, 3000.0, out_dir)
+    # hist_plot_2(v4d_uv_dist, v4o1_uv_dist, wave_length, out_dir)
+    # hist_plot_3(v4d_uv_dist, v4o1_uv_dist, wave_length, out_dir)
     print('- histograms took %.2f s' % (time.time() - t0))
 
 

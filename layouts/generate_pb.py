@@ -137,8 +137,8 @@ def main():
     # frames = ['equatorial', 'horizon']
     frames = ['equatorial']
 
-    fov = 180.0
-    im_size = 256
+    fov = 60.0
+    im_size = 4096
 
     total = len(models) * len(frames) * len(az) * len(freq_hz)
     ii = 0

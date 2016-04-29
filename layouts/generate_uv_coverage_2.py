@@ -51,7 +51,7 @@ def main():
     dec = radians(-26.568851215532160)
     mjd_mid = 57443.4375000000
 
-    snapshot = False
+    snapshot = True
     if snapshot:
         mjd_start = mjd_mid
         obs_length = 0.0
@@ -87,16 +87,16 @@ def main():
     # Plotting ===============================================================
     if os.path.exists(out_dir):
         shutil.rmtree(out_dir)
-    plot_layouts(v4d, v4o1, station_radius_m, join(out_dir, 'layouts'))
-    plot_psf(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1, freq,
-             join(out_dir, 'psf'))
-    uv_plot(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, join(out_dir, 'uv_scatter'))
+    # plot_layouts(v4d, v4o1, station_radius_m, join(out_dir, 'layouts'))
+    # plot_psf(uu_v4d, vv_v4d, ww_v4d, uu_v4o1, vv_v4o1, ww_v4o1, freq,
+    #          join(out_dir, 'psf'))
+    # uv_plot(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, join(out_dir, 'uv_scatter'))
     plot_uv_hist(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
                  join(out_dir, 'uv_hist'))
-    plot_uv_images(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
-                   station_radius_m, join(out_dir, 'uv_images'))
-    plot_az_rms_2(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
-                  join(out_dir, 'uv_az'))
+    # plot_uv_images(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
+    #                station_radius_m, join(out_dir, 'uv_images'))
+    # plot_az_rms_2(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length,
+    #               join(out_dir, 'uv_az'))
 
 
 if __name__ == '__main__':
