@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Script to generate v5d station coordinates.
+"""Script to generate v4o1 station coordinates.
 
 Changes:
     04/03/2016: Initial version.
@@ -23,13 +23,13 @@ def generate_random_core(num_stations, core_radius_m, inner_core_radius_m,
         x, y, miss_count, weights, r_weights = \
             gridgen_taylor_padded(num_stations, core_radius_m * 2.0,
                                   inner_core_radius_m * 2.0,
-                                  station_radius_m * 2.0, sll, 5000)
-
+                                  station_radius_m * 2.0, sll, 50000)
         if x.shape[0] == num_stations:
-            print('Done. seed = %i (%i)' % (seed, miss_count.max()))
+            print('Done generating core. seed = %i (%i)'
+                  % (seed + t, miss_count.max()))
             break
         else:
-            print('%i' % miss_count.shape[0], end=' ')
+            print('%i/%i' % (miss_count.shape[0], num_stations), end=' ')
         if (x.shape[0] / float(num_stations)) < 0.7:
             raise RuntimeError('Failed to generate enough stations in the '
                                'core. %i / %i generated **'
@@ -50,7 +50,7 @@ def generate_core_arms(num_arms, core_arm_count, stations_per_cluster,
     cluster_x = numpy.zeros(num_clusters)
     cluster_y = numpy.zeros(num_clusters)
     for i in range(num_arms):
-        t = numpy.arange(2, core_arm_count + 2) * delta_theta
+        t = numpy.arange(1, core_arm_count + 1) * delta_theta
         tmp = a * numpy.exp(b * t)
         cx = tmp * numpy.cos(t + arm_offsets[i])
         cy = tmp * numpy.sin(t + arm_offsets[i])
@@ -93,6 +93,9 @@ def generate_core_arms_2(num_arms, core_arm_count, stations_per_cluster,
     tmp = a * numpy.exp(b * t)
     cluster_x = tmp * numpy.cos(t)
     cluster_y = tmp * numpy.sin(t)
+    # cluster_x, cluster_y = rotate_coords(cluster_x, cluster_y, 90.0)
+    # cluster_x, cluster_y = rotate_coords(cluster_x, cluster_y, 90.0 + 120.0)
+    # cluster_x, cluster_y = rotate_coords(cluster_x, cluster_y, 90.0 + 120.0 + 120.0)
     for i in range(num_arms):
         cluster_x[i::3], cluster_y[i::3] = \
             rotate_coords(cluster_x[i::3], cluster_y[i::3],
@@ -105,7 +108,7 @@ def generate_core_arms_2(num_arms, core_arm_count, stations_per_cluster,
     for i in range(num_clusters):
         for t in range(num_tries):
             x, y, _ = gridgen(stations_per_cluster, arm_cluster_radius * 2.0,
-                              station_radius_m * 2.0, 10000)
+                              station_radius_m * 2.0, 30000)
             if x.shape[0] == stations_per_cluster:
                 break
             else:
@@ -201,19 +204,24 @@ def plot_layout(x_core, y_core, x_arm, y_arm, x_arm_2, y_arm_2,
                                arm_cluster_radius, color='r',
                                fill=True, alpha=0.1, linewidth=0.0)
         ax.add_artist(circle)
+    circle = pyplot.Circle((0, 0),
+                           (cx_arm[-1]**2 + cy_arm[-1]**2)**0.5,
+                           color='r',
+                           fill=False, alpha=0.5, linewidth=2.0,
+                           linestyle=':')
+    ax.add_artist(circle)
 
     for i in range(cx_arm_2.shape[0]):
         circle = pyplot.Circle((cx_arm_2[i], cy_arm_2[i]),
                                arm_cluster_radius, color='k',
                                fill=False, alpha=0.5, linewidth=1.0)
         ax.add_artist(circle)
-
-        circle = pyplot.Circle((0, 0),
-                               (cx_arm_2[-1]**2 + cy_arm_2[-1]**2)**0.5,
-                               color='b',
-                               fill=False, alpha=0.3, linewidth=1.0,
-                               linestyle='--')
-        ax.add_artist(circle)
+    circle = pyplot.Circle((0, 0),
+                           (cx_arm_2[-1]**2 + cy_arm_2[-1]**2)**0.5,
+                           color='g',
+                           fill=False, alpha=0.3, linewidth=1.0,
+                           linestyle='--')
+    ax.add_artist(circle)
 
     for i in range(x_arm.shape[0]):
         circle = pyplot.Circle((x_arm_2[i], y_arm_2[i]),
@@ -228,8 +236,8 @@ def plot_layout(x_core, y_core, x_arm, y_arm, x_arm_2, y_arm_2,
         ax.add_artist(circle)
     for i in range(x_arm_outer.shape[0]):
         circle = pyplot.Circle((x_arm_outer[i], y_arm_outer[i]),
-                               station_radius_m, color='y',
-                               fill=True, alpha=0.4, linewidth=1.0)
+                               station_radius_m, color='k',
+                               fill=True, alpha=0.6, linewidth=1.0)
         ax.add_artist(circle)
 
     ax.grid(which='both')
@@ -243,12 +251,24 @@ def plot_layout(x_core, y_core, x_arm, y_arm, x_arm_2, y_arm_2,
     ax.set_xlim(-1500, 1500)
     ax.set_ylim(-1500, 1500)
     pyplot.savefig(join(out_dir, 'layout_01.5km.png'))
+    ax.set_xlim(-2000, 2000)
+    ax.set_ylim(-2000, 2000)
+    pyplot.savefig(join(out_dir, 'layout_02.0km.png'))
+    ax.set_xlim(-2000, 2000)
+    ax.set_ylim(-2000, 2000)
+    pyplot.savefig(join(out_dir, 'layout_02.0km.png'))
     ax.set_xlim(-3000, 3000)
     ax.set_ylim(-3000, 3000)
     pyplot.savefig(join(out_dir, 'layout_03.0km.png'))
     ax.set_xlim(-5000, 5000)
     ax.set_ylim(-5000, 5000)
     pyplot.savefig(join(out_dir, 'layout_05.0km.png'))
+    ax.set_xlim(-10000, 10000)
+    ax.set_ylim(-10000, 10000)
+    pyplot.savefig(join(out_dir, 'layout_10.0km.png'))
+    ax.set_xlim(-15000, 15000)
+    ax.set_ylim(-15000, 15000)
+    pyplot.savefig(join(out_dir, 'layout_15.0km.png'))
     ax.set_xlim(-50000, 50000)
     ax.set_ylim(-50000, 50000)
     pyplot.savefig(join(out_dir, 'layout_50.0km.png'))
@@ -269,29 +289,31 @@ def main():
     # =========================================================================
 
     # ====== Core
-    seed = 1
+    seed = numpy.random.randint(1, 20000)
+    seed = 4407
     num_tries = 10
-    num_core_stations = (1 + 5 + 11 + 17) * 6 + (3 * 6)
-    core_radius_m = 480.0
-    inner_core_radius_m = 280.0
+    num_core_stations = (1 + 5 + 11 + 17) * 6
+    core_radius_m = 420.0
+    inner_core_radius_m = 230.0
     station_radius_m = 35.0 / 2.0
-    sll = -28
+    sll = -22
     # ====== Core arms
     num_arms = 3
-    core_arm_count = 4
+    core_arm_count = 5
     stations_per_arm_cluster = 6
-    arm_cluster_radius = 75.0
-    # a = 300.0
-    # b = 0.513
+    arm_cluster_radius = 80.0
     a = 300.0
     b = 0.513
     delta_theta = math.radians(37.0)
     arm_offsets = numpy.radians([35.0, 155.0, 270.0])
 
-    a2 = 500.0
+    num_arms_2 = 3
+    core_arm_count_2 = 5
+    # a2 = core_radius_m + arm_cluster_radius
+    a2 = 410.0 + 80.0
     b2 = 0.513
-    delta_theta2 = math.radians(12.0)
-    arm_offsets2 = numpy.radians([35.0, 155.0, 270.0])
+    delta_theta2 = math.radians(9.25)
+    arm_offsets2 = numpy.radians([90.0, 210.0, 325.0])
 
     num_core_arm_stations = num_arms * core_arm_count * stations_per_arm_cluster
     # ====== Outer arms
@@ -301,7 +323,7 @@ def main():
     v4a_ss_enu_file = 'v7ska1lowN1v2rev3R.enu.94x4.fixed.txt'
     outer_arm_cluster_radius = 80.0
 
-    out_dir = 'v5d.tm'
+    out_dir = 'v4o1.tm'
     # =========================================================================
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
@@ -320,7 +342,8 @@ def main():
 
     # Core arms (single spiral, split between arms)
     x_arm_2, y_arm_2, cx_arm_2, cy_arm_2 = \
-        generate_core_arms_2(num_arms, core_arm_count, stations_per_arm_cluster,
+        generate_core_arms_2(num_arms_2, core_arm_count_2,
+                             stations_per_arm_cluster,
                              arm_cluster_radius, station_radius_m,
                              a2, b2, delta_theta2, arm_offsets2, num_tries)
 

@@ -335,6 +335,7 @@ def main():
                     if os.path.isdir(out_dir):
                         print(' - INFO: Results already exists, skipping.')
                         continue
+
                     create_settings(out_dir, ini_file, mjd, ra, dec, freq,
                                     model, frame, im_size)
                     os.makedirs(out_dir)
@@ -351,6 +352,7 @@ def main():
                     print('= REMOVING %i FITS FILES' % len(fits_files))
                     for ff in fits_files:
                         os.remove(join(out_dir, ff))
+
                     # x-power beams
                     t2 = time.time()
                     for q in range(10):
