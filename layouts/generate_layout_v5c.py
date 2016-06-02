@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Script to generate v5b station coordinates.
+"""Script to generate v5c station coordinates.
 
 Changes:
     20/05/2016: Initial version.
