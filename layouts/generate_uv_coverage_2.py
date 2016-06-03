@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-from os.path import join
-import numpy
-from math import radians
+
 import shutil
+from math import radians
+from os.path import join
+
+import numpy
+
 try:
     from pyuvwsim import (load_station_coords, convert_enu_to_ecef,
                           evaluate_baseline_uvw)
@@ -22,12 +25,7 @@ except ImportError:
     print('OSKAR python imager not found, PSF images wont be made.')
     oskar_imager_found = False
 
-from plotting_psf import plot_psf
-from plotting_layout import plot_layouts
-from plotting_uv_scatter import uv_plot
 from plotting_uv_hist import plot_uv_hist
-from plotting_uv_image import plot_uv_images
-from plotting_uv_az import plot_az_rms_2
 
 
 def main():
