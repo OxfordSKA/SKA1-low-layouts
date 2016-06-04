@@ -1,7 +1,7 @@
-import numpy
 import math
+
 import matplotlib.pyplot as plt
-import scipy.stats
+import numpy
 
 # Define minimum station separation.
 min_sep = 35 # metres
