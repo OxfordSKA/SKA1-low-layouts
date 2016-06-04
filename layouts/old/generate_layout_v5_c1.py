@@ -5,15 +5,11 @@ Changes:
     26/05/2016: Initial version.
 """
 from __future__ import print_function
-import math
-import os
-import sys
-from os.path import join
-import numpy
-import shutil
+
 import matplotlib.pyplot as pyplot
-import utilities.layout_utils as utils
+import numpy
 import tsp
+import utilities.layout_utils as utils
 
 
 # TODO(BM) this wont work as need an overlap constraint

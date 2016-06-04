@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import numpy
-import matplotlib.pyplot as pyplot
-from numpy.random import rand
-from math import radians, floor
+
 import math
+from math import radians, floor
+
+import matplotlib.pyplot as pyplot
+import numpy
+from numpy.random import rand
+
 try:
     from pyuvwsim import (load_station_coords, convert_enu_to_ecef,
                           evaluate_baseline_uvw)

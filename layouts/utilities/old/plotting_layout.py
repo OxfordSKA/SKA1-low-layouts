@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-import matplotlib.pyplot as pyplot
-from os.path import join
+
 import os
+from os.path import join
+
+import matplotlib.pyplot as pyplot
 
 
 def plot_layouts(v4d, v4o1, station_radius_m, out_dir):

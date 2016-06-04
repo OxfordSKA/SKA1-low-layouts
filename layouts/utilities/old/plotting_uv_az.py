@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-import matplotlib.pyplot as pyplot
-from matplotlib.colors import LogNorm, SymLogNorm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from os.path import join
-import os
-import numpy
-from math import ceil
+
 import math
+import os
+from math import ceil
+from os.path import join
+
+import matplotlib.pyplot as pyplot
+import numpy
+from matplotlib.colors import LogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def plot_az_rms(uu_v4d, vv_v4d, wave_length, out_dir):

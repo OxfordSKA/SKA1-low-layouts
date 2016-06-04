@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-import matplotlib.pyplot as pyplot
-from os.path import join
+
 import os
+from os.path import join
+
+import matplotlib.pyplot as pyplot
 
 
 def uv_plot(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, out_dir):

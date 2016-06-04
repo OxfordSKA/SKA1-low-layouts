@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-import matplotlib.pyplot as pyplot
-from os.path import join
-import numpy
+
 import os
-from math import ceil
 import time
+from math import ceil
+from os.path import join
+
+import matplotlib.pyplot as pyplot
+import numpy
 
 
 def plot_uv_hist(uu_v4d, vv_v4d, uu_v4o1, vv_v4o1, wave_length, out_dir):

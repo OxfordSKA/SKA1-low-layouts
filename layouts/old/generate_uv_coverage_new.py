@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
+import os
 import shutil
+import time
+from collections import OrderedDict
 from math import radians
 from os.path import join
 
-import pyuvwsim
 import numpy
+import pyuvwsim
 from utilities.layout_utils import generate_baseline_uvw
-import time
-import os
 from utilities.plotting_layout import plot_layouts_2
 from utilities.plotting_psf import plot_psf_2
 from utilities.plotting_uv_scatter import uv_plot_2
-import shutil
-from collections import OrderedDict
-import matplotlib.pyplot as pyplot
 
 
 def main():

@@ -8,13 +8,12 @@ from __future__ import print_function
 
 import math
 import os
+import shutil
 import sys
 from os.path import join
 
 import matplotlib.pyplot as pyplot
 import numpy
-import shutil
-
 from utilities.layout_utils import (gridgen_taylor_padded, gridgen,
                                     rotate_coords)
 

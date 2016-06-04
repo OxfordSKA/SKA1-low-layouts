@@ -12,12 +12,14 @@ Changes:
     29/02/2016: Initial version.
 """
 from __future__ import print_function
-import numpy
-from numpy.random import random
+
+import os
 from math import radians
 from os.path import join
-import os
+
 import matplotlib.pyplot as pyplot
+import numpy
+from numpy.random import random
 
 
 def rotate_coords(x, y, angle):

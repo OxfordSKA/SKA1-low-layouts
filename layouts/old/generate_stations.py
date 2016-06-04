@@ -2,14 +2,14 @@
 
 from __future__ import print_function
 
-import matplotlib.pyplot as pyplot
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import numpy
-from numpy.random import rand
-import shutil
 import os
+import shutil
 from os.path import join
-from math import radians
+
+import matplotlib.pyplot as pyplot
+import numpy
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from numpy.random import rand
 
 
 def gridgen(num_points, diameter, min_dist, max_trials=1000):

@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-from os.path import join
-import os
-import numpy
+
 import math
+import os
+import time
+from os.path import join
+
 import matplotlib.pyplot as pyplot
+import numpy
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import time
+
 try:
     from oskar.imager import Imager
     oskar_imager_found = True

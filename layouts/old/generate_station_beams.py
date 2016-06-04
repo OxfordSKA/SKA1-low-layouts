@@ -7,17 +7,12 @@ estimate of the sensitivity of the power spectrum.
 
 from __future__ import print_function
 
-import csv
-import subprocess
 import os
-from os.path import join
-import numpy
-import pyfits
-import matplotlib.pyplot as pyplot
-import matplotlib.animation as animation
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import subprocess
 import time
-import math
+from os.path import join
+
+import numpy
 
 
 class OskarSettings(object):
