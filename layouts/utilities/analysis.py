@@ -38,6 +38,34 @@ def generate_uv_coords(x_ecef, y_ecef, z_ecef, settings, obs):
     return uu, vv, ww
 
 
+def generate_baseline_coords(layout, settings):
+    x, y = layout['x'], layout['y']
+    z = numpy.zeros_like(x)
+    wavelength_m = 299792458.0 / settings['freq_hz']
+    mjd_start = settings['mjd_mid'] - (settings['obs_length_s'] / 2.0) / 86400.0
+    x, y, z = numpy.array(x), numpy.array(y), numpy.zeros_like(x)
+    x_ecef, y_ecef, z_ecef = pyuvwsim.convert_enu_to_ecef(x, y, z,
+                                                          settings['lon'],
+                                                          settings['lat'])
+    num_stations = x_ecef.shape[0]
+    num_baselines = num_stations * (num_stations - 1) / 2
+    num_coords = settings['num_times'] * num_baselines
+    uu = numpy.zeros(num_coords, dtype='f4')
+    vv, ww = numpy.zeros_like(uu), numpy.zeros_like(uu)
+    u = numpy.zeros(num_stations, dtype='f4')
+    v, w = numpy.zeros_like(u), numpy.zeros_like(u)
+    for i in range(settings['num_times']):
+        mjd = mjd_start + (i * settings['interval_s'] +
+                           settings['interval_s'] / 2.0) / 86400.0
+        uu_, vv_, ww_ = pyuvwsim.evaluate_baseline_uvw(x_ecef, y_ecef, z_ecef,
+                                                       settings['ra'],
+                                                       settings['dec'], mjd)
+        uu[i * num_baselines: (i + 1) * num_baselines] = uu_ / wavelength_m
+        vv[i * num_baselines: (i + 1) * num_baselines] = vv_ / wavelength_m
+        ww[i * num_baselines: (i + 1) * num_baselines] = ww_ / wavelength_m
+    return uu, vv, ww
+
+
 def generate_uv_grid(uu, vv, ww, x, y, settings):
     wavelength_m = 299792458.0 / settings['freq_hz']
     r = (x**2 + y**2)**0.5
@@ -57,6 +85,25 @@ def generate_uv_grid(uu, vv, ww, x, y, settings):
     im.update_plane(-uu, -vv, -ww, numpy.ones_like(uu, dtype='c8'),
                     numpy.ones_like(uu), uv_grid, 0.0)
     return uv_grid, uv_cell_size_wavelengths, fov_deg
+
+
+def generate_psf_2(uu, vv, ww, settings):
+    im = oskar.imager.Imager('Single')
+    im.set_fft_on_gpu(False)
+    psf = im.make_image(uu, vv, ww, numpy.ones_like(uu, dtype='c8'),
+                        numpy.ones_like(uu, 'c8'), settings['psf_fov_deg'],
+                        settings['psf_im_size'])
+    return psf
+
+
+def get_psf_coords(settings):
+    lm_max = math.sin(0.5 * math.radians(settings['psf_fov_deg']))
+    lm_inc = 2.0 * lm_max / settings['psf_im_size']
+    l = numpy.arange(-settings['psf_im_size'] / 2, settings['psf_im_size'] / 2)
+    l = l.astype(dtype='f8') * lm_inc
+    l, m = numpy.meshgrid(-l, l)
+    r = (l**2 + m**2)**0.5
+    return l, m, r
 
 
 def generate_psf(uu, vv, ww, settings):

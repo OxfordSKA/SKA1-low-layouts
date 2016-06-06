@@ -7,6 +7,8 @@ import numpy
 from matplotlib import ticker
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy import stats
+
 
 def plot_layout(ax, layout, settings, r_min, r_max, fontsize='small'):
     x = layout['x'] / 1.0e3
@@ -39,6 +41,30 @@ def plot_layout(ax, layout, settings, r_min, r_max, fontsize='small'):
     ax.set_ylabel('North (kilometres)', fontsize=fontsize)
     ax.set_title('Station positions (n=%i)' % x.shape[0], fontsize=fontsize)
     ax.grid()
+
+
+def plot_uv_scatter_2(ax, uu, vv, r_max, settings, fontsize):
+    wavelength_m = 299792458.0 / settings['freq_hz']
+    if settings['num_times'] == 1:
+        alpha = 0.2
+    else:
+        alpha = max(0.002, 0.2 / (settings['num_times']))
+    uu *= wavelength_m
+    vv *= wavelength_m
+    ax.plot(uu/ 1.0e3, vv / 1.0e3, '.', color='k', ms=2.0, alpha=alpha)
+    ax.plot(-uu / 1.0e3, -vv / 1.0e3, '.', color='k', ms=2.0, alpha=alpha)
+    c = plt.Circle((0.0, 0.0), r_max * 2.0 / 1.0e3, fill=False, color='r',
+                   linestyle='-', linewidth=2, alpha=0.5)
+    ax.add_artist(c)
+    ax.set_xlim(r_max * 2.0 / 1.0e3, -r_max * 2.0 / 1.0e3)
+    ax.set_ylim(-r_max * 2.0 / 1.0e3, r_max * 2.0 / 1.0e3)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.tick_params(axis='both', which='minor', labelsize=fontsize)
+    ax.set_xlabel('uu (kilometres)', fontsize=fontsize)
+    ax.set_ylabel('vv (kilometres)', fontsize=fontsize)
+    ax.set_title('Baseline coordinates (%.2f h, %i samples)' %
+                 (settings['obs_length_s'] / 3600.0,
+                  settings['num_times']), fontsize=fontsize)
 
 
 def plot_uv_scatter(ax, result, settings, r_min, r_max, fontsize):
@@ -159,6 +185,55 @@ def plot_psf(ax, result, settings, fontsize, vmin=-0.03, linthresh=0.1):
                   result['obs']['obs_length_s'] / 3600.0), fontsize=fontsize)
 
 
+def plot_psf_2(ax, psf, settings):
+    centre = settings['psf_im_size'] / 2.0
+    extent = numpy.array([centre + 0.5, -centre + 0.5,
+                          -centre - 0.5, centre - 0.5])
+    lm_max = math.sin(0.5 * math.radians(settings['psf_fov_deg']))
+    lm_inc = 2.0 * lm_max / settings['psf_im_size']
+    extent *= lm_inc
+    im_ = ax.imshow(psf, interpolation='nearest', cmap='inferno',
+                    origin='lower',
+                    norm=SymLogNorm(linthresh=0.05, linscale=1.0,
+                                    vmin=-0.1, vmax=0.5, clip=False),
+                    extent=extent)
+
+    # Color bar
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.03)
+    cbar = ax.figure.colorbar(im_, cax=cax, format='%.1f')
+    cbar.ax.tick_params(labelsize='smaller')
+    ax.grid(True)
+
+
+def plot_psf_1d_new(ax, psf, r_lm, settings, r_max, color='b', label=None):
+    r_lm = r_lm.flatten()
+    order = numpy.argsort(r_lm)
+    r_lm = r_lm[order]
+    psf_1d = psf.flatten()[order]
+
+    wavelength_m = 299792458.0 / settings['freq_hz']
+    psf_hwhm = (wavelength_m / (r_max * 2.0)) / 2.0  # FIXME(BM) better expression?
+    x = r_lm / psf_hwhm
+
+    num_bins = 500
+    bin_mean, edges, number = \
+        stats.binned_statistic(x, psf_1d, statistic='mean', bins=num_bins)
+    bin_x = (edges[1:] + edges[:-1]) / 2
+
+    def bin_max(values):
+        return numpy.abs(values).max()
+
+    bin_max, edges, number = \
+        stats.binned_statistic(x, psf_1d, statistic=bin_max, bins=num_bins)
+
+    # ax.plot(x, psf_1d, 'k.', markersize=3.0, alpha=0.5)
+    ax.plot(bin_x, bin_mean, '--', color=color, linewidth=1.0, alpha=0.6)
+    ax.plot(bin_x, bin_max, '-', color=color, linewidth=1.0, alpha=0.6,
+            label=label)
+    ax.grid(True)
+
+
 def plot_psf_1d(ax, result, settings, fontsize, vmin=-0.03, linthresh=0.1):
     r_lm = result['psf_r_lm']
     psf_1d = result['psf_az_1d']
@@ -263,4 +338,27 @@ def plot_psf_histogram(ax, result, settings, fontsize, y_max):
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.tick_params(axis='both', which='minor', labelsize=fontsize)
 
+
+def plot_psf_histogram_2(ax, psf, color='b', fontsize='small', label=None,
+                         num_antennas=None, mag=None):
+    data = numpy.abs(psf.flatten())
+    n, _ = numpy.histogram(data, bins=500, density=True)
+    x = (_[1:] + _[:-1])/2
+    ax.plot(x, n, '-', color=color, label=label)
+    ax.set_xlim(0.0, 0.3)
+    y_max = 10**math.ceil(math.log10(max(num_antennas, n.max())))
+    ax.set_ylim(1.0e-5, y_max)
+    ax.set_yscale('log', nonposy='mask')
+    ax.grid(True)
+    if num_antennas:
+        ax.plot(ax.get_xlim(), [num_antennas, num_antennas], '-', color=color)
+        g = num_antennas * numpy.exp(-num_antennas * x)
+        ax.plot(x, g, ':', color=color, alpha=0.5)
+    if mag:
+        s_max = (2.0 / float(num_antennas)) * math.log(mag)
+        ax.plot([s_max, s_max], ax.get_ylim(), '-', color=color)
+    ax.set_xlabel('sidelobe magitude', fontsize=fontsize)
+    ax.set_ylabel('number of samples', fontsize=fontsize)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.tick_params(axis='both', which='minor', labelsize=fontsize)
 

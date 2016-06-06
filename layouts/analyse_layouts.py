@@ -4,20 +4,26 @@
 # TODO(BM) tapered random generator
 # TODO(BM) add beam convolution
 # TODO(BM) Metrics (see apple notes, ALMA paper etc)
+# LOOK AT THE PSF METRIC FOR THE CORE REGION ONLY AS THIS WILL BE THE PSF
+# USED AFTER THE LAMBDA CUT?
 
 
 from __future__ import print_function
 
 import math
+import os
 import time
 from os.path import join
 
 import matplotlib.pyplot as plt
 import numpy
-import pyuvwsim
+from pyuvwsim import (convert_enu_to_ecef)
 
 from utilities.analysis import (generate_uv_coords,
+                                generate_baseline_coords,
                                 generate_psf,
+                                generate_psf_2,
+                                get_psf_coords,
                                 bin_psf_1d)
 from utilities.generators import (inner_arms,
                                   inner_arms_clusters,
@@ -25,8 +31,11 @@ from utilities.generators import (inner_arms,
 from utilities.plotting import (plot_layout,
                                 plot_uv_scatter,
                                 plot_psf,
+                                plot_psf_2,
+                                plot_psf_1d_new,
                                 plot_psf_1d_bins,
-                                plot_psf_histogram)
+                                plot_psf_histogram,
+                                plot_psf_histogram_2)
 
 
 def add_observation(obs_length_s, obs_list, duty_cycle_s=3.0*60.0):
@@ -47,24 +56,91 @@ def analyse_layouts(layouts, settings, r_min, r_max):
     # TODO(BM) Define what analysis to do and work out what plots to make
     # - produce separate plots for each layout and result
     # TODO(BM) loop over layouts and add curves to plots.
+    # TODO(BM) output results in sub-folders
 
-    fontsize='small'
+    fontsize = 'small'
+
+    wavelength_m = 299792458.0 / settings['freq_hz']
+    psf_fwhm = wavelength_m / (r_max * 2.0)
+    mag = settings['psf_fov_deg'] / math.degrees(psf_fwhm)
 
     fig_layout_compare = plt.figure(figsize=(8, 8))
     ax_layout_compare = fig_layout_compare.add_subplot(111, aspect='equal')
 
-    for layout_name in layouts:
+    fig_psf_1d_compare = plt.figure(figsize=(8, 8))
+    ax_psf_1d_compare = fig_psf_1d_compare.add_subplot(111)
+    color=['b', 'r', 'g']
+
+    fig_psf_hist_compare = plt.figure(figsize=(8, 8))
+    ax_psf_hist_compare = fig_psf_hist_compare.add_subplot(111)
+
+    for i_layout, layout_name in enumerate(layouts):
+        print('Analysing layout %02i : %s' % (i_layout, layout_name))
+        layout = layouts[layout_name]
+
+        # Layout plot(s) ------------------------------------------------------
         fig = plt.figure(figsize=(8, 8))
-        plot_layout(fig.add_subplot(111, aspect='equal'),
-                    layouts[layout_name], settings, r_min, r_max, fontsize)
+        plot_layout(fig.add_subplot(111, aspect='equal'), layout, settings,
+                    r_min, r_max, fontsize)
         fig.savefig(join(settings['results_dir'], '%s_coords.png' % layout_name))
         plt.close(fig)
-        plot_layout(ax_layout_compare, layouts[layout_name], settings, r_min,
-                    r_max, fontsize)
+        plot_layout(ax_layout_compare, layout, settings, r_min, r_max, fontsize)
+
+        # Generate and plot uv coordinates ------------------------------------
+        uu, vv, ww = generate_baseline_coords(layout, settings)
+        # fig = plt.figure(figsize=(8, 8))
+        # plot_uv_scatter_2(fig.add_subplot(111, aspect='equal'), uu, vv,
+        #                   r_max, settings, fontsize)
+        # fig.savefig(join(settings['results_dir'], '%s_uv_scatter.png'
+        #                  % layout_name))
+        # plt.close(fig)
+
+        # TODO(BM) UV radial distance plot
+        uv_dist = (uu**2 + vv**2)**0.5
+        # use scipy.stats (see psf 1d plot)
+
+
+        # Generate and plot PSF
+        # TODO(BM) PSF including station illumination = psf * beam?
+        psf = generate_psf_2(uu, vv, ww, settings)
+        l, m, r_lm = get_psf_coords(settings)
+
+        fig = plt.figure(figsize=(8, 8))
+        plot_psf_2(fig.add_subplot(111), psf, settings)
+        fig.savefig(join(settings['results_dir'], '%s_psf_2d.png'
+                         % layout_name))
+        plt.close(fig)
+        fig = plt.figure(figsize=(8, 8))
+        plot_psf_1d_new(fig.add_subplot(111), psf, r_lm, settings, r_max)
+        fig.savefig(join(settings['results_dir'], '%s_psf_1d.png'
+                         % layout_name))
+        plt.close(fig)
+        plot_psf_1d_new(ax_psf_1d_compare, psf, r_lm, settings, r_max,
+                        color[i_layout], layout_name)
+
+        # Plot PSF histogram
+        plot_psf_histogram_2(ax_psf_hist_compare, psf, color[i_layout],
+                             fontsize, layout_name,  layout['x'].shape[0],
+                             mag)
+
+        # TODO UV grid metric
 
     fig_layout_compare.savefig(join(settings['results_dir'],
                                     'layout_compare.png'))
     plt.close(fig_layout_compare)
+
+    ax_psf_1d_compare.legend()
+    ax_psf_1d_compare.set_ylim(-0.1, 0.5)
+    ax_psf_1d_compare.set_xlim(1.0, ax_psf_1d_compare.get_xlim()[1])
+    ax_psf_1d_compare.set_xscale('log')
+    fig_psf_1d_compare.savefig(join(settings['results_dir'],
+                                    'psf_1d_compare.png'))
+    plt.close(fig_psf_1d_compare)
+
+    ax_psf_hist_compare.legend()
+    fig_psf_hist_compare.savefig(join(settings['results_dir'],
+                                      'psf_hist_compare.png'))
+    plt.close(fig_psf_hist_compare)
 
 
 
@@ -78,9 +154,9 @@ def analyse_layout(layout, settings):
         x.extend(coords['x'])
         y.extend(coords['y'])
     x, y, z = numpy.array(x), numpy.array(y), numpy.zeros_like(x)
-    ecef_x, ecef_y, ecef_z = pyuvwsim.convert_enu_to_ecef(x, y, z,
-                                                          settings['lon'],
-                                                          settings['lat'])
+    ecef_x, ecef_y, ecef_z = convert_enu_to_ecef(x, y, z,
+                                                 settings['lon'],
+                                                 settings['lat'])
     # Generate results
     results = list()
     for i_obs, obs in enumerate(observations):
@@ -237,14 +313,28 @@ def main():
         'ra': math.radians(68.698903779331502),
         'dec': math.radians(-26.568851215532160),
         'mjd_mid': 57443.4375000000,
+        'num_times': 1,
+        'obs_length_s': 0.0,
+        'interval_s': 0.0,
         'freq_hz': 200e6,
         'uv_grid_size': 64,
-        'psf_im_size': 8192,
-        'psf_fov_deg': 180.0,
-        'results_dir': 'results'
+        'psf_im_size': 1024,
+        'results_dir': 'results_2'
     }
+
+    if not os.path.isdir(settings['results_dir']):
+        os.makedirs(settings['results_dir'])
+
+    wavelength_m = 299792458.0 / settings['freq_hz']
+    pb_fwhm = math.degrees(wavelength_m / (settings['station_r'] * 2.0))
+    settings['psf_fov_deg'] = 3.0 * pb_fwhm
     r_min = 500.0
     r_max = 1700.0
+    psf_fwhm = wavelength_m / (r_max * 2.0)
+    print('psf_fwhm', psf_fwhm)
+    print('psf_fov_deg', settings['psf_fov_deg'])
+    print('mag: %f' % (settings['psf_fov_deg'] / math.degrees(psf_fwhm)))
+
 
     # FIXME(BM) multiple PSF FoV's
     # FIXME(BM) think about PSF FoV vs frequency .... (cant just use lambda=1m!)
@@ -262,10 +352,10 @@ def main():
     b, num_arms, clusters_per_arm, stations_per_cluster = 0.5, 3, 4, 6
     cluster_diameter_m, station_radius_m = 200, settings['station_r']
     layouts['clusters'] = inner_arms_clusters(b, num_arms, clusters_per_arm,
-                                             stations_per_cluster,
-                                             cluster_diameter_m,
-                                             station_radius_m,
-                                             r_min, r_max)
+                                              stations_per_cluster,
+                                              cluster_diameter_m,
+                                              station_radius_m,
+                                              r_min, r_max)
 
     # Random uniform
     num_stations = layouts['clusters']['x'].shape[0]
@@ -273,45 +363,8 @@ def main():
     layouts['random_uniform'] = inner_arms_rand_uniform(num_stations,
                                                         station_radius_m,
                                                         r_min, r_max)
+    analyse_layouts(layouts, settings, r_min, r_max)
 
-
-    results = analyse_layouts(layouts, settings, r_min, r_max)
-
-
-
-    return
-    plotting(layout, results, settings, 'spiral_b%.1f_%02ix%02i'
-             % (b, num_arms, n), r_min, r_max)
-
-    # Clusters
-    layout = inner_arms_clusters(b, num_arms, clusters_per_arm,
-                                 stations_per_cluster,
-                                 cluster_diameter_m, station_radius_m,
-                                 r_min, r_max, layout)
-    results = analyse_layout(layout, settings)
-    plotting(layout, results, settings,
-             'spiral_clusters_b%.1f_%02ix%02ix%02i' %
-             (b, num_arms, clusters_per_arm, stations_per_cluster))
-
-
-
-    # Random uniform
-    num_stations = 72
-    station_radius_m = settings['station_r']
-    for iter in range(1):
-        seed = numpy.random.randint(1, 20000)
-        numpy.random.seed(seed)
-        layout = inner_arms_rand_uniform(num_stations, station_radius_m, r_min,
-                                         r_max)
-        results = analyse_layout(layout, settings)
-        plotting(layout, results, settings,
-                 'random_uniform_%02i_%i' % (num_stations, iter))
-
-    # TODO(BM) Consider comparing multiple layouts together
-    # (one or more obs lengths)?
-
-    # LOOK AT THE PSF METRIC FOR THE CORE REGION ONLY AS THIS WILL BE THE PSF
-        # USED AFTER THE LAMBDA CUT?
 
 if __name__ == '__main__':
     main()
