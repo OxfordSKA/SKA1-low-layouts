@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-
 import math
-import time
 
 import numpy
 import oskar
@@ -52,8 +49,6 @@ def generate_baseline_coords(layout, settings):
     num_coords = settings['num_times'] * num_baselines
     uu = numpy.zeros(num_coords, dtype='f4')
     vv, ww = numpy.zeros_like(uu), numpy.zeros_like(uu)
-    u = numpy.zeros(num_stations, dtype='f4')
-    v, w = numpy.zeros_like(u), numpy.zeros_like(u)
     for i in range(settings['num_times']):
         mjd = mjd_start + (i * settings['interval_s'] +
                            settings['interval_s'] / 2.0) / 86400.0
@@ -87,6 +82,28 @@ def generate_uv_grid(uu, vv, ww, x, y, settings):
     return uv_grid, uv_cell_size_wavelengths, fov_deg
 
 
+def generate_uv_grid_2(uu, vv, ww, r_max, settings):
+    uv_cell_size_m = (settings['station_r'] * 2.0) / 3.0
+    wavelength_m = 299792458.0 / settings['freq_hz']
+    uv_max = r_max * 2.0
+    grid_size = int((uv_max * 2.0) / uv_cell_size_m)
+    if grid_size % 2 == 1:
+        grid_size += 1
+    uv_cell_size_wavelengths = uv_cell_size_m / wavelength_m
+    fov_deg = uv_cell_size_to_fov(uv_cell_size_wavelengths, grid_size)
+    im = oskar.imager.Imager('Single')
+    im.set_fft_on_gpu(False)
+    im.set_fov(fov_deg)
+    im.set_size(grid_size)
+    im.set_grid_kernel('Pillbox', 1, 1)
+    uv_grid = numpy.zeros((grid_size, grid_size), dtype='c8')
+    im.update_plane(uu, vv, ww, numpy.ones_like(uu, dtype='c8'),
+                    numpy.ones_like(uu), uv_grid, 0.0)
+    im.update_plane(-uu, -vv, -ww, numpy.ones_like(uu, dtype='c8'),
+                    numpy.ones_like(uu), uv_grid, 0.0)
+    return uv_grid, uv_cell_size_wavelengths, fov_deg
+
+
 def generate_psf_2(uu, vv, ww, settings):
     im = oskar.imager.Imager('Single')
     im.set_fft_on_gpu(False)
@@ -112,11 +129,9 @@ def generate_psf(uu, vv, ww, settings):
     im = oskar.imager.Imager('Single')
     im.set_grid_kernel('Spheroidal', 3, 100)
     im.set_fft_on_gpu(False)
-    t = time.time()
     psf = im.make_image(uu, vv, ww, numpy.ones_like(uu, dtype='c16'),
                         numpy.ones_like(uu), settings['psf_fov_deg'],
                         settings['psf_im_size'])
-    print('make image: %.2fs,' % (time.time() - t), end=' ')
 
     psf_cell_size = im.fov_to_cellsize(math.radians(fov_deg), im_size)
     l = numpy.arange(-im_size / 2, im_size / 2) * psf_cell_size

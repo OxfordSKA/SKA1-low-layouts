@@ -49,10 +49,10 @@ def plot_uv_scatter_2(ax, uu, vv, r_max, settings, fontsize):
         alpha = 0.2
     else:
         alpha = max(0.002, 0.2 / (settings['num_times']))
-    uu *= wavelength_m
-    vv *= wavelength_m
-    ax.plot(uu/ 1.0e3, vv / 1.0e3, '.', color='k', ms=2.0, alpha=alpha)
-    ax.plot(-uu / 1.0e3, -vv / 1.0e3, '.', color='k', ms=2.0, alpha=alpha)
+    uu_ = numpy.copy(uu) * wavelength_m
+    vv_ = numpy.copy(vv) * wavelength_m
+    ax.plot(uu_/ 1.0e3, vv_ / 1.0e3, '.', color='k', ms=2.0, alpha=alpha)
+    ax.plot(-uu_ / 1.0e3, -vv_ / 1.0e3, '.', color='k', ms=2.0, alpha=alpha)
     c = plt.Circle((0.0, 0.0), r_max * 2.0 / 1.0e3, fill=False, color='r',
                    linestyle='-', linewidth=2, alpha=0.5)
     ax.add_artist(c)
@@ -60,11 +60,32 @@ def plot_uv_scatter_2(ax, uu, vv, r_max, settings, fontsize):
     ax.set_ylim(-r_max * 2.0 / 1.0e3, r_max * 2.0 / 1.0e3)
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.tick_params(axis='both', which='minor', labelsize=fontsize)
+    ax.grid(True)
     ax.set_xlabel('uu (kilometres)', fontsize=fontsize)
     ax.set_ylabel('vv (kilometres)', fontsize=fontsize)
     ax.set_title('Baseline coordinates (%.2f h, %i samples)' %
                  (settings['obs_length_s'] / 3600.0,
                   settings['num_times']), fontsize=fontsize)
+
+
+def plot_uv_scatter_3(ax, uu, vv, r_max, settings, fontsize):
+    uu_ = numpy.copy(uu)
+    vv_ = numpy.copy(vv)
+    ax.plot(uu_/ 1.0e3, vv_ / 1.0e3, '.', color='k', ms=2.0)
+    ax.plot(-uu_ / 1.0e3, -vv_ / 1.0e3, '.', color='k', ms=2.0)
+    r_uv = (uu_**2 + vv_**2)**0.5
+    lim = r_uv.max() / 1.0e3
+    ax.set_xlim(lim, -lim)
+    ax.set_ylim(-lim, lim)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.tick_params(axis='both', which='minor', labelsize=fontsize)
+    ax.grid(True)
+    ax.set_xlabel('uu (kilo-wavelength)', fontsize=fontsize)
+    ax.set_ylabel('vv (kilo-wavelength)', fontsize=fontsize)
+    ax.set_title('Baseline coordinates (%.2f h, %i samples)' %
+                 (settings['obs_length_s'] / 3600.0,
+                  settings['num_times']), fontsize=fontsize)
+
 
 
 def plot_uv_scatter(ax, result, settings, r_min, r_max, fontsize):
@@ -144,6 +165,42 @@ def plot_uv_hist_2(ax, result, settings, r_min, r_max, fontsize):
     ax.grid(True)
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.tick_params(axis='both', which='minor', labelsize=fontsize)
+
+
+def plot_uv_density(ax, uu, vv, wavelength_m, r_min, r_max, color='b',
+                    label=None, fontsize='small'):
+    uv_dist = ((uu*wavelength_m)**2 + (vv*wavelength_m)**2)**0.5
+    uv_dist /= (r_max * 2.0)
+    # bins = numpy.linspace(0, r_max * 2.0, 50)
+    bins = numpy.linspace(0.0, 1.0, 50)
+    n, _ = numpy.histogram(uv_dist, bins=bins, density=True)
+    x = (_[1:] + _[:-1]) / 2
+    ax.plot(x, n, '-', color=color, label=label, alpha=0.8, linewidth=1.5)
+    ax.grid(True)
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.tick_params(axis='both', which='minor', labelsize=fontsize)
+
+
+def plot_uv_grid(ax, uv_grid, uv_cell_size_wavelengths, wavelength_m, r_max):
+    centre = uv_grid.shape[0] / 2
+    extent = numpy.array([centre + 0.5, -centre + 0.5,
+                          -centre - 0.5, centre - 0.5])
+    extent *= uv_cell_size_wavelengths * wavelength_m
+    im_ = ax.imshow(uv_grid.real, interpolation='nearest', cmap='inferno',
+                    origin='lower', extent=extent)
+    c = plt.Circle((0.0, 0.0), r_max * 2.0, fill=False, color='r',
+                   linestyle='-', linewidth=2, alpha=0.5)
+    ax.add_artist(c)
+
+    # Color bar
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.03)
+    cbar = ax.figure.colorbar(im_, cax=cax, format='%.1f')
+    cbar.ax.tick_params(labelsize='smaller')
+    ax.grid(True)
+
+    ax.set_xlabel('uu [meters]', fontsize='small')
+    ax.set_ylabel('vv [meters]', fontsize='small')
 
 
 def plot_psf(ax, result, settings, fontsize, vmin=-0.03, linthresh=0.1):
