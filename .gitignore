@@ -3,3 +3,4 @@
 /beam_patterns/models
 /layouts/models/*.tm
 /layouts/results*
+/tests/.ipynb_checkpoints/
