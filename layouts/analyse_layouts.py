@@ -39,6 +39,144 @@ def fig_save_and_clear(fig, file_name):
     fig.clear()
 
 
+def eval_uv_gap_2(uu, vv, q_max=None):
+    num_bins = 18
+    uu_ = numpy.copy(uu)
+    vv_ = numpy.copy(vv)
+    q = (uu_**2 + vv_**2)**0.5
+    theta = numpy.arctan2(vv_, uu_)
+    theta[theta < 0.0] += math.pi
+    if q_max is not None:
+        keep_idx = numpy.where(q <= q_max)
+        q = q[keep_idx]
+        theta = theta[keep_idx]
+    else:
+        q_max = q.max()
+
+    # define bin edges
+    theta_edges = numpy.linspace(0, math.pi, num_bins + 1)
+    q_edges = numpy.linspace(0, q_max, num_bins + 1)
+    theta_idx = numpy.digitize(theta, theta_edges)
+    uv_gap_im = numpy.zeros((num_bins, num_bins))
+    uv_gap_im_2 = numpy.zeros((num_bins, num_bins))
+
+    # Loop over the theta bins
+    for j in range(num_bins):
+        # Get q values in the theta bin sorted into q order.
+        q_values = q[theta_idx == 1 + j]
+        q_values = numpy.append(q_values, [0.0])
+        q_values = numpy.sort(q_values)
+        q_diff = numpy.diff(q_values)
+        q_diff_norm = q_diff / q_values[1:]
+
+        # Loop over q bins
+        for i in range(num_bins):
+            d0 = numpy.where(q_values <= q_edges[i])[0][-1]
+            d1 = numpy.where(q_values > q_edges[i + 1])[0]
+            d1 = q_values.shape[0] - 1 if len(d1) == 0 else d1[0]
+            bin_diffs = q_diff_norm[d0:d1]
+            if bin_diffs.shape[0] > 0:
+                uv_gap_im[j, i] = numpy.nanmean(bin_diffs)
+            else:
+                uv_gap_im[j, i] = 1.0
+            # Other definition ...
+            # qmin_ = q_edges[i]
+            qmax_ = q_edges[i + 1]
+            x_b = numpy.append(q_values, qmax_)
+            x_b = numpy.sort(x_b)
+            x_b = x_b[x_b <= qmax_]
+            uv_gap_im_2[j, i] = numpy.sum(numpy.diff(x_b)**2 / x_b[1:]) / qmax_
+
+
+    # Azimuthal averages of delta_u (to plot radial profile)
+    uv_gap_r = numpy.zeros((2, num_bins))
+    uv_gap_r_2 = numpy.zeros((2, num_bins))
+    for i in range(num_bins):
+        uv_gap_r[0, i] = q_edges[i] + (q_edges[i + 1] - q_edges[i]) / 2
+        uv_gap_r[1, i] = numpy.nanmean(uv_gap_im[i, :])
+        uv_gap_r_2[0, i] = q_edges[i] + (q_edges[i + 1] - q_edges[i]) / 2
+        uv_gap_r_2[1, i] = numpy.nanmean(uv_gap_im_2[i, :])
+
+    # -------------------------------------
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(211)
+    cmap = plt.cm.get_cmap('gray', 2048)
+    extent = [0.0, q_max / 1.0e3, 0, math.pi]
+    im = ax.imshow(uv_gap_im, interpolation='nearest', cmap=cmap,
+                   alpha=0.8, origin='lower', extent=extent, norm=LogNorm())
+    ax.figure.colorbar(im, ax=ax)
+    ax.plot(q / 1.0e3, theta, 'w.', ms=5.0, alpha=1.0)
+    ax.set_aspect('auto')
+    ax.set_xlim(-(q_max / 20) / 1.0e3, (q_max + q_max / 20) / 1.0e3)
+    ax.set_ylim(0.0 - math.pi / 16, math.pi + math.pi / 16)
+
+    ax = fig.add_subplot(212)
+    ax.plot(uv_gap_r[0, :] / 1.0e3, uv_gap_r[1, :], '+', alpha=1.0, ms=10.0,
+            mew=2.0)
+    ax.grid(True)
+    ax.set_ylim(0.0001, 1.0)
+    ax.set_yscale('log')
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+    # FIXME(BM) respect output directory name
+    plt.savefig(join('results', 'uv_gap', 'foo.png'))
+    plt.close(fig)
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(211)
+    cmap = plt.cm.get_cmap('gray', 2048)
+    extent = [0.0, q_max / 1.0e3, 0, math.pi]
+    im = ax.imshow(uv_gap_im_2, interpolation='nearest', cmap=cmap,
+                   alpha=0.8, origin='lower', extent=extent, norm=LogNorm())
+    ax.figure.colorbar(im, ax=ax)
+    ax.plot(q / 1.0e3, theta, 'w.', ms=5.0, alpha=1.0)
+    ax.set_aspect('auto')
+    ax.set_xlim(-(q_max / 20) / 1.0e3, (q_max + q_max / 20) / 1.0e3)
+    ax.set_ylim(0.0 - math.pi / 16, math.pi + math.pi / 16)
+
+    ax = fig.add_subplot(212)
+    ax.plot(uv_gap_r_2[0, :] / 1.0e3, uv_gap_r_2[1, :], '+', alpha=1.0, ms=10.0,
+            mew=2.0)
+    ax.grid(True)
+    ax.set_ylim(0.0001, 1.0)
+    ax.set_yscale('log')
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%g'))
+    # FIXME(BM) respect output directory name
+    plt.savefig(join('results', 'uv_gap', 'foo2.png'))
+    plt.close(fig)
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, polar='True')
+    theta_p = numpy.linspace(0, 2.0 * math.pi, 2 * num_bins + 1)
+    used_theta = theta_p
+    used_rad = q_edges[:-1] / 1.0e3
+    data = numpy.transpose(uv_gap_im)
+    data = numpy.hstack((data, data))
+    p_theta, p_rad = numpy.meshgrid(used_theta, used_rad)
+    im = ax.pcolormesh(p_theta, p_rad, data, cmap='gray', norm=LogNorm())
+    ax.figure.colorbar(im, ax=ax)
+    ax.plot(theta, q/1.0e3, 'r.', ms=3.0, alpha=0.8)
+    ax.plot(theta + math.pi, q/1.0e3, 'r.', ms=3.0, alpha=0.8)
+    ax.grid(True)
+    plt.savefig(join('results', 'uv_gap', 'foo_p.png'))
+    plt.close(fig)
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, polar='True')
+    theta_p = numpy.linspace(0, 2.0 * math.pi, 2 * num_bins + 1)
+    used_theta = theta_p
+    used_rad = q_edges[:-1] / 1.0e3
+    data = numpy.transpose(uv_gap_im_2)
+    data = numpy.hstack((data, data))
+    p_theta, p_rad = numpy.meshgrid(used_theta, used_rad)
+    im = ax.pcolormesh(p_theta, p_rad, data, cmap='gray', norm=LogNorm())
+    ax.figure.colorbar(im, ax=ax)
+    ax.plot(theta, q / 1.0e3, 'r.', ms=3.0, alpha=0.8)
+    ax.plot(theta + math.pi, q / 1.0e3, 'r.', ms=5.0, alpha=0.8)
+    ax.grid(True)
+    plt.savefig(join('results', 'uv_gap', 'foo_p_2.png'))
+    plt.close(fig)
+
+
 def eval_uv_gap(uu, vv, q_max):
     q_max = 300.0e3
     uu_ = numpy.copy(uu)
@@ -59,18 +197,18 @@ def eval_uv_gap(uu, vv, q_max):
     theta_idx = numpy.digitize(theta, theta_edges)
 
     uv_gap_im = numpy.zeros((num_bins, num_bins))
-    uv_gap_2 = numpy.zeros((num_bins))
+    uv_gap_2 = numpy.zeros(num_bins)
     for j in range(num_bins):  # loop over theta bins
 
-        # Get q values in the theta bin
+        # Get q values in the theta bin.
         theta_bin = theta[theta_idx == 1 + j]
         q_bin = q[theta_idx == 1 + j]
 
-        # Add zero and q_max points.
+        # Add zero (and q_max points.)
         t = theta_edges[j] + (theta_edges[j + 1] - theta_edges[j]) / 2.0
         theta_bin = numpy.append(theta_bin, [t, t])
         q_bin = numpy.append(q_bin, [0.0, q_max])
-        q_bin = numpy.append(q_bin, [0.0])
+        # q_bin = numpy.append(q_bin, [0.0])
 
         # Sort into q order
         q_idx = numpy.argsort(q_bin)
@@ -229,7 +367,7 @@ def analyse_layouts(layouts, settings, r_min, r_max):
             fig_save_and_clear(fig, join(settings['results_dir'], 'uv_grid', '%02i_%s_uv_grid_2d.png' % (i_layout, layout_name)))
 
         if 'uv_gap' in outputs:
-            eval_uv_gap(uu, vv, r_max)
+            eval_uv_gap_2(uu, vv)
             # Histogram of the distance matrix?
 
         # Generate and plot PSF
