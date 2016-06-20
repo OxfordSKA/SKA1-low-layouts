@@ -113,6 +113,14 @@ def generate_psf_2(uu, vv, ww, settings):
     return psf
 
 
+def generate_psf_3(uu, vv, ww, im_size, fov_deg):
+    im = oskar.imager.Imager('Single')
+    im.set_fft_on_gpu(False)
+    psf = im.make_image(uu, vv, ww, numpy.ones_like(uu, dtype='c8'),
+                        numpy.ones_like(uu, 'c8'), fov_deg, im_size)
+    return psf
+
+
 def get_psf_coords(settings):
     lm_max = math.sin(0.5 * math.radians(settings['psf_fov_deg']))
     lm_inc = 2.0 * lm_max / settings['psf_im_size']

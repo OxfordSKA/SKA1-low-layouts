@@ -8,6 +8,20 @@ from matplotlib import ticker
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import stats
+import os
+from os.path import join
+
+
+def save_fig(fig, name, dirs, w=10, h=10):
+    """Function to save a figure handle with the specified name to a
+    directory described by the list, dirs"""
+    path = join(*dirs)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    size_ = fig.get_size_inches()
+    fig.set_size_inches(w, h)
+    fig.savefig(join(path, name), bbox_inches='tight')
+    fig.set_size_inches(size_)
 
 
 def plot_layout(ax, layout, settings, r_min, r_max, fontsize='small'):

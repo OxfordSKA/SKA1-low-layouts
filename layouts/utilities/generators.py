@@ -46,11 +46,29 @@ def inner_arms(b, num_arms, n, r_min, r_max):
         x_, y_ = log_spiral_2(r_min, r_max, b, n)
         theta = i * (360.0 / num_arms)
         x[i, :], y[i, :] = rotate_coords(x_, y_, theta)
-    return {'x': x.flatten(), 'y': y.flatten(), 'color': 'k'}
+
+    return {'x': x.flatten(), 'y': y.flatten()}
+
 
 
 def inner_arms_clusters(b, num_arms, clusters_per_arm, stations_per_cluster,
                         cluster_diameter_m, station_radius_m, r_min, r_max):
+    """
+    Generate clusters of stations for the inner arms
+
+    Args:
+        b:
+        num_arms:
+        clusters_per_arm:
+        stations_per_cluster:
+        cluster_diameter_m:
+        station_radius_m:
+        r_min:
+        r_max:
+
+    Returns:
+
+    """
     x = numpy.zeros((num_arms, stations_per_cluster * clusters_per_arm))
     y = numpy.zeros_like(x)
     cx = numpy.zeros((num_arms, clusters_per_arm))
@@ -63,13 +81,17 @@ def inner_arms_clusters(b, num_arms, clusters_per_arm, stations_per_cluster,
                                 station_radius_m * 2.0)
         x[i, :], y[i, :] = rotate_coords(x[i, :], y[i, :], i * theta_inc)
         cx[i, :], cy[i, :] = rotate_coords(cx[i, :], cy[i, :], i * theta_inc)
+    x = x.flatten()
+    y = y.flatten()
+    z = numpy.zeros_like(x)
     return {'type': 'clusters',
-            'x': x.flatten(),
-            'y': y.flatten(),
+            'coord_type': 'enu',
+            'x': x,
+            'y': y,
+            'z': z,
             'cluster_x': cx.flatten(),
             'cluster_y': cy.flatten(),
-            'cluster_diameter': cluster_diameter_m,
-            'color': 'b'
+            'cluster_diameter': cluster_diameter_m
             }
 
 
