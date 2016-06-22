@@ -108,7 +108,7 @@ def generate_psf_2(uu, vv, ww, settings):
     im = oskar.imager.Imager('Single')
     im.set_fft_on_gpu(False)
     psf = im.make_image(uu, vv, ww, numpy.ones_like(uu, dtype='c8'),
-                        numpy.ones_like(uu, 'c8'), settings['psf_fov_deg'],
+                        numpy.ones_like(uu, dtype='f8'), settings['psf_fov_deg'],
                         settings['psf_im_size'])
     return psf
 
@@ -117,7 +117,7 @@ def generate_psf_3(uu, vv, ww, im_size, fov_deg):
     im = oskar.imager.Imager('Single')
     im.set_fft_on_gpu(False)
     psf = im.make_image(uu, vv, ww, numpy.ones_like(uu, dtype='c8'),
-                        numpy.ones_like(uu, 'c8'), fov_deg, im_size)
+                        numpy.ones_like(uu), fov_deg, im_size)
     return psf
 
 
