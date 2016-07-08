@@ -19,12 +19,14 @@ The following keys are optional.
 Any number of additional keys may be present depending on the type.
 """
 
+from __future__ import absolute_import, division, print_function
 import numpy
-
+import sys
 from .layout import (rotate_coords,
                      log_spiral_2,
                      log_spiral_clusters,
-                     rand_uniform_2d)
+                     rand_uniform_2d,
+                     generate_clusters)
 
 
 def inner_arms(b, num_arms, n, r_min, r_max):
@@ -46,59 +48,52 @@ def inner_arms(b, num_arms, n, r_min, r_max):
         x_, y_ = log_spiral_2(r_min, r_max, b, n)
         theta = i * (360.0 / num_arms)
         x[i, :], y[i, :] = rotate_coords(x_, y_, theta)
-
     return {'x': x.flatten(), 'y': y.flatten()}
 
 
-
 def inner_arms_clusters(b, num_arms, clusters_per_arm, stations_per_cluster,
-                        cluster_diameter_m, station_radius_m, r_min, r_max):
-    """
-    Generate clusters of stations for the inner arms
+                        cluster_diameter_m, station_diameter_m, r_min, r_max,
+                        trail_timeout, tries_per_cluster, seed=None,
+                        verbose=False):
 
-    Args:
-        b:
-        num_arms:
-        clusters_per_arm:
-        stations_per_cluster:
-        cluster_diameter_m:
-        station_radius_m:
-        r_min:
-        r_max:
+    # Generate all the clusters
+    num_clusters = clusters_per_arm * num_arms
+    min_sep = station_diameter_m
+    cluster_r = cluster_diameter_m / 2
+    num_trials = tries_per_cluster
+    cluster_r_min = 0.0
+    x_, y_, info = generate_clusters(num_clusters, stations_per_cluster,
+                                     cluster_r, min_sep,
+                                     trail_timeout, num_trials,
+                                     seed, cluster_r_min, verbose)
 
-    Returns:
-
-    """
-    x = numpy.zeros((num_arms, stations_per_cluster * clusters_per_arm))
-    y = numpy.zeros_like(x)
-    cx = numpy.zeros((num_arms, clusters_per_arm))
-    cy = numpy.zeros_like(cx)
+    # Generate cluster centres.
     theta_inc = 360.0 / num_arms
+    cx, cy = numpy.zeros(num_clusters), numpy.zeros(num_clusters)
+
+    print(r_min, r_max, b, clusters_per_arm)
+    cx_, cy_ = log_spiral_2(r_min, r_max, b, clusters_per_arm)
     for i in range(num_arms):
-        x[i, :], y[i, :], cx[i, :], cy[i, :] = \
-            log_spiral_clusters(r_min, r_max, b, clusters_per_arm,
-                                stations_per_cluster, cluster_diameter_m / 2.0,
-                                station_radius_m * 2.0)
-        x[i, :], y[i, :] = rotate_coords(x[i, :], y[i, :], i * theta_inc)
-        cx[i, :], cy[i, :] = rotate_coords(cx[i, :], cy[i, :], i * theta_inc)
-    x = x.flatten()
-    y = y.flatten()
-    z = numpy.zeros_like(x)
-    return {'type': 'clusters',
-            'coord_type': 'enu',
-            'x': x,
-            'y': y,
-            'z': z,
-            'cluster_x': cx.flatten(),
-            'cluster_y': cy.flatten(),
-            'cluster_diameter': cluster_diameter_m
-            }
+        print(i, theta_inc * i)
+        cx_r, cy_r = rotate_coords(cx_, cy_, theta_inc * i)
+        cx[i * clusters_per_arm:(i + 1) * clusters_per_arm] = cx_r
+        cy[i * clusters_per_arm:(i + 1) * clusters_per_arm] = cy_r
+
+    # Shift clusters to centres
+    x = numpy.zeros((num_clusters, stations_per_cluster))
+    y = numpy.zeros((num_clusters, stations_per_cluster))
+    for i in range(num_clusters):
+        x[i, :] = x_[i] + cx[i]
+        y[i, :] = y_[i] + cy[i]
+
+    return {'x': x.flatten(), 'y': y.flatten(), 'cx': cx, 'cy': cy}
 
 
-def inner_arms_rand_uniform(num_stations, station_radius_m,
-                            r_min, r_max):
-    x, y, _ = rand_uniform_2d(num_points=num_stations, r1=r_max,
-                              min_sep=station_radius_m*2.0, r0=r_min, max_tries=1000)
+def inner_arms_rand_uniform(num_stations, station_diameter_m,
+                            r_min, r_max, seed=None):
+    x, y, _ = rand_uniform_2d(n=num_stations, r_max=r_max,
+                              min_sep=station_diameter_m, timeout=10.0,
+                              r_min=r_min, seed=seed)
     if not x.shape[0] == num_stations:
         raise RuntimeError('Failed to generate enough stations.')
-    return {'x': x, 'y': y, 'color': 'g'}
+    return {'x': x, 'y': y}
