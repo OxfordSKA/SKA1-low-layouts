@@ -5,3 +5,4 @@
 /layouts/results*
 /layouts/tests/.ipynb_checkpoints/
 /layouts/.ipynb_checkpoints/
+/layouts/*.png
