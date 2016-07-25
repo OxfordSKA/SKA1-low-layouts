@@ -148,10 +148,12 @@ def rand_uniform_2d(n, r_max, min_sep, timeout, r_min=0.0, seed=None):
         n (int): Number of points to generate.
         r_max (float):  Maximum radius.
         min_sep (float): Minimum separation of points.
-        r_min (Optional[float]): Minimum radius.
         timeout (Optional[float]): timeout, in seconds.
+        r_min (Optional[float]): Minimum radius.
+        seed (Optional[int]): random number seed
 
     Returns:
+        tuple (x, y, info)
 
     """
     if seed:
@@ -193,12 +195,13 @@ def rand_uniform_2d(n, r_max, min_sep, timeout, r_min=0.0, seed=None):
                 for ky in range(y0, y1):
                     for kx in range(x0, x1):
                         if grid['count'][ky, kx] > 0:
-                            kh1 = grid['start'][ky, kx]
+                            i_other = grid['start'][ky, kx]
                             for kh in range(grid['count'][ky, kx]):
-                                dx = xt - x[kh1]
-                                dy = yt - y[kh1]
-                                d_min = min((dx**2 + dy**2)**0.5, d_min)
-                                kh1 = grid['next'][kh1]
+                                dx = xt - x[i_other]
+                                dy = yt - y[i_other]
+                                d_other = (dx**2 + dy**2)**0.5
+                                d_min = min(d_min, d_other)
+                                i_other = grid['next'][i_other]
 
                 if d_min >= min_sep:
                     x[j], y[j] = xt, yt
@@ -231,8 +234,131 @@ def rand_uniform_2d(n, r_max, min_sep, timeout, r_min=0.0, seed=None):
 
     return x, y, {'max_tries': max_tries,
                   'total_tries': total_tries,
-                  'time_taken': time.time() - t0
-                  }
+                  'time_taken': time.time() - t0}
+
+
+def rand_uniform_2d_tapered(n, r_max, min_sep, taper_func, timeout,
+                            r_min=0.0, seed=None):
+    """
+    Generate 2d random points with a minimum separation within a radius
+    range specified by r_max and r_min.
+
+    Args:
+        n (int): Number of points to generate.
+        r_max (float):  Maximum radius.
+        min_sep (float): Minimum separation of points before modification by
+                         taper function.
+        taper_func (function): Taper function for min sep growth.
+        timeout (Optional[float]): timeout, in seconds.
+        r_min (Optional[float]): Minimum radius.
+        seed (Optional[int]): random number seed
+
+    Returns:
+        tuple (x, y, info)
+
+    """
+    if seed:
+        numpy.random.seed(seed)
+
+    # Range of separation of points at the inner and outer generation radius.
+    # FIXME(BM) these are an approximation.
+    min_sep_r_min = min_sep * (1 / taper_func((r_min + (min_sep / 2)) / r_max))
+    min_sep_r_max = min_sep * (1 / taper_func((r_max - (min_sep / 2)) / r_max))
+
+    grid_size = min(100, int(ceil(float(r_max * 2.0) / min_sep_r_max)))
+    grid_cell = float(r_max * 2.0) / grid_size  # Grid sector size
+    scale = 1.0 / grid_cell  # Scaling onto the sector grid.
+    print('grid_size = ', grid_size)
+
+    x, y = numpy.zeros(n), numpy.zeros(n)
+    grid = {
+        'start': numpy.zeros((grid_size, grid_size), dtype='i8'),
+        'end': numpy.zeros((grid_size, grid_size), dtype='i8'),
+        'count': numpy.zeros((grid_size, grid_size), dtype='i8'),
+        'next': numpy.zeros(n, dtype='i8')
+    }
+
+    # FIXME(BM) preallocate all random numbers to try?
+    trials = -numpy.ones((int(1e7), 2))
+    it = 0
+    t0 = time.time()
+    n_generated = n
+    num_tries, max_tries, total_tries = 0, 0, 0
+    for j in range(n):
+        done = False
+        while not done:
+            xt, yt = get_trial_position(r_max)
+            rt = (xt**2 + yt**2)**0.5
+            trials[it, :] = xt, yt
+            it += 1
+            # Point is inside area defined by: r_min < r < r_max
+            #print(j, r_max, rt, end=' ')
+            if rt + (min_sep_r_max / 2.0) > r_max:
+                # print('fail1')
+                num_tries += 1
+            elif r_min and rt - (min_sep_r_min / 2.0) < r_min:
+                # print('fail2')
+                num_tries += 1
+            else:
+                #print('ok')
+                jx, jy = grid_position(xt, yt, scale, r_max)
+                y0 = max(0, jy - 2)
+                y1 = min(grid_size, jy + 3)
+                x0 = max(0, jx - 2)
+                x1 = min(grid_size, jx + 3)
+
+                # Find minimum spacing between trial and other points.
+                d_min = r_max * 2.0
+                i_min = -1
+                for ky in range(y0, y1):
+                    for kx in range(x0, x1):
+                        if grid['count'][ky, kx] > 0:
+                            i_other = grid['start'][ky, kx]
+                            for kh in range(grid['count'][ky, kx]):
+                                dx = xt - x[i_other]
+                                dy = yt - y[i_other]
+                                d_other = (dx**2 + dy**2)**0.5
+                                if d_other < d_min:
+                                    d_min = d_other
+                                    i_min = i_other
+                                i_other = grid['next'][i_other]
+
+                r_other = (x[i_min]**2 + y[i_min]**2)**0.5
+                sep_other = min_sep * (1 / taper_func(r_other / r_max))
+                sep_this = min_sep * (1 / taper_func(rt / r_max))
+                # print(j, d_min, min_sep, sep_other, sep_this, r_other, rt)
+
+                if d_min >= max(sep_other, sep_this):
+                    x[j], y[j] = xt, yt
+                    if grid['count'][jy, jx] == 0:
+                        grid['start'][jy, jx] = j
+                    else:
+                        grid['next'][grid['end'][jy, jx]] = j
+                    grid['end'][jy, jx] = j
+                    grid['count'][jy, jx] += 1
+                    max_tries = max(max_tries, num_tries)
+                    num_tries = 0
+                    done = True
+                else:
+                    num_tries += 1
+
+            if (time.time() - t0) >= timeout:
+                max_tries = max(max_tries, num_tries)
+                n_generated = j - 1
+                done = True
+
+        if (time.time() - t0) >= timeout:
+            max_tries = max(max_tries, num_tries)
+            break
+
+    if n_generated < n:
+        x, y = x[:n_generated], y[:n_generated]
+
+    trials = trials[:it]
+    return x, y, {'max_tries': max_tries,
+                  'total_tries': it,
+                  'time_taken': time.time() - t0,
+                  'trials': trials}
 
 
 def rand_uniform_2d_trials(n, r_max, min_sep, trial_timeout, num_trials=5,
