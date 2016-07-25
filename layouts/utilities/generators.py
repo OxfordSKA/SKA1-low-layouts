@@ -26,6 +26,8 @@ from .layout import (rotate_coords,
                      log_spiral_2,
                      log_spiral_clusters,
                      rand_uniform_2d,
+                     rand_uniform_2d_trials,
+                     rand_uniform_2d_tapered,
                      generate_clusters)
 
 
@@ -86,7 +88,8 @@ def inner_arms_clusters(b, num_arms, clusters_per_arm, stations_per_cluster,
         x[i, :] = x_[i] + cx[i]
         y[i, :] = y_[i] + cy[i]
 
-    return {'x': x.flatten(), 'y': y.flatten(), 'cx': cx, 'cy': cy}
+    return {'x': x.flatten(), 'y': y.flatten(), 'cx': cx, 'cy': cy,
+            'cr': cluster_diameter_m / 2}
 
 
 def inner_arms_rand_uniform(num_stations, station_diameter_m,
@@ -97,3 +100,33 @@ def inner_arms_rand_uniform(num_stations, station_diameter_m,
     if not x.shape[0] == num_stations:
         raise RuntimeError('Failed to generate enough stations.')
     return {'x': x, 'y': y}
+
+
+def uniform_core(num_stations, r_max, station_diameter_m, trial_timeout=2.0,
+                 num_trials=5, seed=None, verbose=False):
+    x, y, _ = rand_uniform_2d_trials(num_stations, r_max,
+                                     min_sep=station_diameter_m,
+                                     trial_timeout=trial_timeout,
+                                     num_trials=num_trials,
+                                     seed=seed, r_min=0.0, verbose=verbose)
+    if not x.shape[0] == num_stations:
+        raise RuntimeError('Failed to generate enough stations')
+    return {'x': x, 'y': y}
+
+
+def tapered_core(num_stations, r_max, station_diameter_m, taper_func,
+                 trial_timeout=2.0, num_trails=5, seed=None, r_min=0.0,
+                 verbose=False):
+    x, y, info = rand_uniform_2d_tapered(num_stations, r_max,
+                                         min_sep=station_diameter_m,
+                                         taper_func=taper_func,
+                                         timeout=trial_timeout,
+                                         r_min=r_min, seed=seed)
+    if not x.shape[0] == num_stations:
+        raise RuntimeError('Failed to generate enough stations %i / %i. '
+                           'Time taken = %.2fs, max tries = %i, '
+                           'total tries = %i.' %
+                           (x.shape[0], num_stations, info['time_taken'],
+                            info['max_tries'], info['total_tries']))
+    print('tries = %i' % info['total_tries'])
+    return {'x': x, 'y': y, 'trials': info['trials'], 'taper_func': taper_func}
