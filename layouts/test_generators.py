@@ -105,36 +105,35 @@ def main():
     # layouts['rand_uniform'] = inner_arms_rand_uniform(
     #     n, station_d, r_min, r_max)
 
-    v4a_ss_enu_file = join('models', 'v7ska1lowN1v2rev3R.enu.94x4.fixed.txt')
-    v4a_ss_enu = np.loadtxt(v4a_ss_enu_file)
-    r = (v4a_ss_enu[:, 1]**2 + v4a_ss_enu[:, 2]**2)**0.5
-    v5_enu_file = join('models', 'v5.tm', 'layout.txt')
-    v5_enu = np.loadtxt(v5_enu_file)
+    # v4a_ss_enu_file = join('models', 'v7ska1lowN1v2rev3R.enu.94x4.fixed.txt')
+    # v4a_ss_enu = np.loadtxt(v4a_ss_enu_file)
+    # r = (v4a_ss_enu[:, 1]**2 + v4a_ss_enu[:, 2]**2)**0.5
+    # v5_enu_file = join('models', 'v5.tm', 'layout.txt')
+    # v5_enu = np.loadtxt(v5_enu_file)
+    #
+    # fig, ax = plt.subplots(figsize=(8, 8))
+    # ax.set_aspect('equal')
+    # for p in zip(v4a_ss_enu[:, 1], v4a_ss_enu[:, 2]):
+    #     ax.add_artist(plt.Circle(p, 90 / 2, fill=False, color='k'))
+    # for p in zip(v5_enu[:, 0], v5_enu[:, 1]):
+    #     ax.add_artist(plt.Circle(p, 35 / 2, fill=False, color='b'))
+    #     ax.add_artist(plt.Circle(p, 35 / 2, fill=True, color='b', alpha=0.5,
+    #                              lw=0.0))
+    # ax.add_artist(plt.Circle((0, 0), 1700.0, fill=False, color='r'))
+    # ax.add_artist(plt.Circle((0, 0), 7000.0, fill=False, color='r'))
+    # ax.grid(True)
+    # ax.set_xlim(-r.max(), r.max())
+    # ax.set_ylim(-r.max(), r.max())
+    # plt.show()
 
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.set_aspect('equal')
-    for p in zip(v4a_ss_enu[:, 1], v4a_ss_enu[:, 2]):
-        ax.add_artist(plt.Circle(p, 90 / 2, fill=False, color='k'))
-    for p in zip(v5_enu[:, 0], v5_enu[:, 1]):
-        ax.add_artist(plt.Circle(p, 35 / 2, fill=False, color='b'))
-        ax.add_artist(plt.Circle(p, 35 / 2, fill=True, color='b', alpha=0.5,
-                                 lw=0.0))
-    ax.add_artist(plt.Circle((0, 0), 1700.0, fill=False, color='r'))
-    ax.add_artist(plt.Circle((0, 0), 7000.0, fill=False, color='r'))
-    ax.grid(True)
-    ax.set_xlim(-r.max(), r.max())
-    ax.set_ylim(-r.max(), r.max())
-    plt.show()
-
-    return
     #layouts['outer_arms'] =
 
-    cluster_d = 100.0
-    r_min, r_max = 550.0 + cluster_d / 2, 5000.0
-    b, num_arms, clusters_per_arm, stations_per_cluster = 0.5, 3, 8, 3
-    layouts['clusters'] = inner_arms_clusters(
-        b, num_arms, clusters_per_arm, stations_per_cluster, cluster_d,
-        station_d, r_min, r_max, trail_timeout=3.0, tries_per_cluster=3)
+    # cluster_d = 100.0
+    # r_min, r_max = 550.0 + cluster_d / 2, 5000.0
+    # b, num_arms, clusters_per_arm, stations_per_cluster = 0.5, 3, 8, 3
+    # layouts['clusters'] = inner_arms_clusters(
+    #     b, num_arms, clusters_per_arm, stations_per_cluster, cluster_d,
+    #     station_d, r_min, r_max, trail_timeout=3.0, tries_per_cluster=3)
 
     # n = 300
     # r_max = 500.0

@@ -22,13 +22,7 @@ Any number of additional keys may be present depending on the type.
 from __future__ import absolute_import, division, print_function
 import numpy
 import sys
-from .layout import (rotate_coords,
-                     log_spiral_2,
-                     log_spiral_clusters,
-                     rand_uniform_2d,
-                     rand_uniform_2d_trials,
-                     rand_uniform_2d_tapered,
-                     generate_clusters)
+from .layout import Layout
 
 
 def inner_arms(b, num_arms, n, r_min, r_max):
@@ -47,9 +41,9 @@ def inner_arms(b, num_arms, n, r_min, r_max):
     x = numpy.zeros((num_arms, n))
     y = numpy.zeros_like(x)
     for i in range(num_arms):
-        x_, y_ = log_spiral_2(r_min, r_max, b, n)
+        x_, y_ = Layout.log_spiral_2(r_min, r_max, b, n)
         theta = i * (360.0 / num_arms)
-        x[i, :], y[i, :] = rotate_coords(x_, y_, theta)
+        x[i, :], y[i, :] = Layout.rotate_coords(x_, y_, theta)
     return {'x': x.flatten(), 'y': y.flatten()}
 
 
@@ -64,20 +58,20 @@ def inner_arms_clusters(b, num_arms, clusters_per_arm, stations_per_cluster,
     cluster_r = cluster_diameter_m / 2
     num_trials = tries_per_cluster
     cluster_r_min = 0.0
-    x_, y_, info = generate_clusters(num_clusters, stations_per_cluster,
-                                     cluster_r, min_sep,
-                                     trail_timeout, num_trials,
-                                     seed, cluster_r_min, verbose)
+    x_, y_, info = Layout.generate_clusters(num_clusters, stations_per_cluster,
+                                            cluster_r, min_sep,
+                                            trail_timeout, num_trials,
+                                            seed, cluster_r_min, verbose)
 
     # Generate cluster centres.
     theta_inc = 360.0 / num_arms
     cx, cy = numpy.zeros(num_clusters), numpy.zeros(num_clusters)
 
     print(r_min, r_max, b, clusters_per_arm)
-    cx_, cy_ = log_spiral_2(r_min, r_max, b, clusters_per_arm)
+    cx_, cy_ = Layout.log_spiral_2(r_min, r_max, b, clusters_per_arm)
     for i in range(num_arms):
         print(i, theta_inc * i)
-        cx_r, cy_r = rotate_coords(cx_, cy_, theta_inc * i)
+        cx_r, cy_r = Layout.rotate_coords(cx_, cy_, theta_inc * i)
         cx[i * clusters_per_arm:(i + 1) * clusters_per_arm] = cx_r
         cy[i * clusters_per_arm:(i + 1) * clusters_per_arm] = cy_r
 
@@ -94,9 +88,9 @@ def inner_arms_clusters(b, num_arms, clusters_per_arm, stations_per_cluster,
 
 def inner_arms_rand_uniform(num_stations, station_diameter_m,
                             r_min, r_max, seed=None):
-    x, y, _ = rand_uniform_2d(n=num_stations, r_max=r_max,
-                              min_sep=station_diameter_m, timeout=10.0,
-                              r_min=r_min, seed=seed)
+    x, y, _ = Layout.rand_uniform_2d(n=num_stations, r_max=r_max,
+                                     min_sep=station_diameter_m, timeout=10.0,
+                                     r_min=r_min, seed=seed)
     if not x.shape[0] == num_stations:
         raise RuntimeError('Failed to generate enough stations.')
     return {'x': x, 'y': y}
@@ -104,11 +98,12 @@ def inner_arms_rand_uniform(num_stations, station_diameter_m,
 
 def uniform_core(num_stations, r_max, station_diameter_m, trial_timeout=2.0,
                  num_trials=5, seed=None, verbose=False):
-    x, y, _ = rand_uniform_2d_trials(num_stations, r_max,
-                                     min_sep=station_diameter_m,
-                                     trial_timeout=trial_timeout,
-                                     num_trials=num_trials,
-                                     seed=seed, r_min=0.0, verbose=verbose)
+    x, y, _ = Layout.rand_uniform_2d_trials(num_stations, r_max,
+                                            min_sep=station_diameter_m,
+                                            trial_timeout=trial_timeout,
+                                            num_trials=num_trials,
+                                            seed=seed, r_min=0.0,
+                                            verbose=verbose)
     if not x.shape[0] == num_stations:
         raise RuntimeError('Failed to generate enough stations')
     return {'x': x, 'y': y}
@@ -117,11 +112,11 @@ def uniform_core(num_stations, r_max, station_diameter_m, trial_timeout=2.0,
 def tapered_core(num_stations, r_max, station_diameter_m, taper_func,
                  trial_timeout=2.0, num_trails=5, seed=None, r_min=0.0,
                  verbose=False):
-    x, y, info = rand_uniform_2d_tapered(num_stations, r_max,
-                                         min_sep=station_diameter_m,
-                                         taper_func=taper_func,
-                                         timeout=trial_timeout,
-                                         r_min=r_min, seed=seed)
+    x, y, info = Layout.rand_uniform_2d_tapered(num_stations, r_max,
+                                                min_sep=station_diameter_m,
+                                                taper_func=taper_func,
+                                                timeout=trial_timeout,
+                                                r_min=r_min, seed=seed)
     if not x.shape[0] == num_stations:
         raise RuntimeError('Failed to generate enough stations %i / %i. '
                            'Time taken = %.2fs, max tries = %i, '
