@@ -81,14 +81,30 @@ class Telescope(object):
                 x[i::num_arms], y[i::num_arms], theta0_deg + delta_theta * i)
         return x, y
 
-    def add_log_spiral(self, n, r0, r1, b, num_arms):
+    def add_log_spiral(self, n, r0, r1, b, num_arms, theta0_deg=0.0):
         """Add spiral arms by rotating a single spiral of n positions"""
         x, y = self.log_spiral(n, r0, r1, b)
-        x, y = self.spiral_to_arms(x, y, num_arms)
-        self.layouts['spiral_arms'] = {'x': x, 'y': y}
+        x, y = self.spiral_to_arms(x, y, num_arms, theta0_deg)
+        keys = self.layouts.keys()
+        self.layouts['spiral_arms' + str(len(keys))] = {'x': x, 'y': y}
+
+    def add_cluster_centres(self, n, r0, r1, b, num_arms, theta0_deg=0.0):
+        """Add spiral arms by rotating a single spiral of n positions"""
+        x, y = self.log_spiral(n, r0, r1, b)
+        delta_theta = 360 / num_arms
+        x_final = np.zeros(n * 3)
+        y_final = np.zeros(n * 3)
+        for arm in range(num_arms):
+            x_, y_ = Telescope.rotate_coords(
+                x, y, theta0_deg + delta_theta * arm)
+            x_final[arm * n:(arm + 1) * n] = x_
+            y_final[arm * n:(arm + 1) * n] = y_
+        keys = self.layouts.keys()
+        self.layouts['cluster_centres' + str(len(keys))] = {'x': x_final, 'y': y_final}
 
     def add_log_spiral_clusters(self, num_clusters, num_arms, r0, r1, b,
-                                stations_per_cluster, cluster_radius_m):
+                                stations_per_cluster, cluster_radius_m,
+                                theta0_deg=0.0):
         """Add spiral arm clusters.
         Spiral arm positions generated come from a single single ar
         Note: the random number generator respects class variables
@@ -102,7 +118,7 @@ class Telescope(object):
             self.seed, r_min=0.0)
 
         cx, cy = self.log_spiral(num_clusters, r0, r1, b)
-        cx, cy = self.spiral_to_arms(cx, cy, num_arms)
+        cx, cy = self.spiral_to_arms(cx, cy, num_arms, theta0_deg)
         x = np.zeros(num_clusters * stations_per_cluster)
         y = np.zeros(num_clusters * stations_per_cluster)
         for i in range(num_clusters):
@@ -174,8 +190,14 @@ class Telescope(object):
             r_max = max(np.max(r), r_max)
 
             for xy in zip(x_, y_):
-                c = plt.Circle(xy, radius=(self.station_diameter_m / 2),
-                               fill=False, color='k')
+                colour = 'k'
+                filled = False
+                radius = (self.station_diameter_m / 2)
+                if 'cluster_centres' in name:
+                    colour ='b'
+                    filled = False
+                    radius = 90
+                c = plt.Circle(xy, radius=radius, fill=filled, color=colour)
                 ax.add_artist(c)
 
             if plot_decorations:
