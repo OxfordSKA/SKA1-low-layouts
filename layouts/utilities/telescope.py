@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-import matplotlib.pyplot as plt
-import numpy as np
+
 import os
+from math import log, radians, cos, sin, pi, acosh
 from os.path import join
-from math import log, radians, degrees, cos, sin, pi, acosh
-from .layout import Layout
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import Circle
+import numpy as np
 from . import generators
+from .layout import Layout
 
 
 class Telescope(object):
-    def __init__(self):
+    def __init__(self, name=''):
+        self.name = name
         self.lon_deg = 0
         self.lat_deg = 0
         self.alt_m = 0
@@ -38,6 +41,8 @@ class Telescope(object):
 
     def add_uniform_core(self, num_stations, r_max_m):
         """Add uniform random core"""
+        if self.seed is None:
+            self.seed = np.random.randint(1, 1e8)
         self.layouts['uniform_core'] = generators.uniform_core(
             num_stations, r_max_m, self.station_diameter_m,
             self.trail_timeout_s, self.num_trials, self.seed,
@@ -45,17 +50,20 @@ class Telescope(object):
 
     def add_tapered_core(self, num_stations, r_max_m, taper_func, **kwargs):
         """Add a tapered core"""
+        if self.seed is None:
+            self.seed = np.random.randint(1, 1e8)
         try:
-            layout = Layout.rand_tapered_2d_trials(
-                num_stations, r_max_m, self.station_diameter_m,
-                self.trail_timeout_s, taper_func, self.num_trials, self.seed,
-                0.0, **kwargs)
+            layout_ = Layout.rand_tapered_2d_trials(
+                num_stations, r_max=r_max_m, r_min=0.0,
+                min_sep=self.station_diameter_m,
+                trial_timeout=self.trail_timeout_s, num_trials=self.num_trials,
+                seed0=self.seed, taper_func=taper_func, **kwargs)
             self.layouts['tapered_core'] = dict(
-                x=layout.x, y=layout.y, info=layout.info,
+                x=layout_.x, y=layout_.y, info=layout_.info,
                 taper_func=taper_func, r_max_m=r_max_m, kwargs=kwargs)
+            self.seed = layout_.info['final_seed']
         except RuntimeError as e:
             print('*** ERROR ***:', e.message)
-
 
     @staticmethod
     def rotate_coords(x, y, angle):
@@ -66,12 +74,17 @@ class Telescope(object):
 
     @staticmethod
     def log_spiral(n, r0, r1, b):
-        t_max = log(r1 / r0) * (1 /b)
+        t_max = log(r1 / r0) / b
         t = np.linspace(0, t_max, n)
         tmp = r0 * np.exp(b * t)
         x = tmp * np.cos(t)
         y = tmp * np.sin(t)
         return x, y
+
+    @staticmethod
+    def  log_spiral_2(n, r0, r1, theta_max):
+        b = log(r1 / r0) / theta_max
+        return Telescope.log_spiral(n, r0, r1, b)
 
     @staticmethod
     def spiral_to_arms(x, y, num_arms, theta0_deg=0.0):
@@ -102,6 +115,20 @@ class Telescope(object):
         keys = self.layouts.keys()
         self.layouts['cluster_centres' + str(len(keys))] = {'x': x_final, 'y': y_final}
 
+    def add_log_sprial_section(self, n, r0, r1, theta_max, num_arms, theta0_deg=0.0):
+        x, y = self.log_spiral_2(n, r0, r1, theta_max)
+        delta_theta = 360 / num_arms
+        x_final = np.zeros(n * num_arms)
+        y_final = np.zeros(n * num_arms)
+        for arm in range(num_arms):
+            x_, y_ = Telescope.rotate_coords(
+                x, y, theta0_deg + delta_theta * arm)
+            x_final[arm * n:(arm + 1) * n] = x_
+            y_final[arm * n:(arm + 1) * n] = y_
+        keys = self.layouts.keys()
+        self.layouts['log_spiral_section' + str(len(keys))] = {
+            'x': x_final, 'y': y_final}
+
     def add_log_spiral_clusters(self, num_clusters, num_arms, r0, r1, b,
                                 stations_per_cluster, cluster_radius_m,
                                 theta0_deg=0.0):
@@ -112,6 +139,8 @@ class Telescope(object):
           self.trail_timeout_s
           self.num_trials
         """
+        if self.seed is None:
+            self.seed = np.random.randint(1, 1e8)
         x_, y_, info = Layout.generate_clusters(
             num_clusters, stations_per_cluster, cluster_radius_m,
             self.station_diameter_m, self.trail_timeout_s, self.num_trials,
@@ -175,13 +204,16 @@ class Telescope(object):
             i += n0
         return x, y, z
 
-    def plot_layout(self, plot_r=None, filename=None, show=False,
+    def plot_layout(self, plot_r=None, filename=None, mpl_ax=None,
                     plot_decorations=False, plot_radii=[],
-                    x_lim=None, y_lim=None):
+                    x_lim=None, y_lim=None, station_color='k'):
         plot_nearest = False
         if not self.layouts:
             raise RuntimeError('No layout defined, nothing to plot!')
-        fig, ax = plt.subplots(figsize=(8, 8))
+        if mpl_ax is None:
+            fig, ax = plt.subplots(figsize=(8, 8))
+        else:
+            ax = mpl_ax
         r_max = 0
         for name in self.layouts:
             layout = self.layouts[name]
@@ -189,22 +221,35 @@ class Telescope(object):
             r = (x_**2 + y_**2)**0.5
             r_max = max(np.max(r), r_max)
 
-            for xy in zip(x_, y_):
-                colour = 'k'
+            colour = station_color
+            filled = False
+            radius = (self.station_diameter_m / 2)
+            if 'cluster_centres' in name:
+                colour = 'b'
                 filled = False
-                radius = (self.station_diameter_m / 2)
-                if 'cluster_centres' in name:
-                    colour ='b'
-                    filled = False
-                    radius = 90
-                c = plt.Circle(xy, radius=radius, fill=filled, color=colour)
+                radius = 90
+            for xy in zip(x_, y_):
+                c = Circle(xy, radius=radius, fill=filled, color=colour)
                 ax.add_artist(c)
+
+            # leg = ax.legend()
+            # # Update the legend
+            # handles, labels = ax.get_legend_handles_labels()
+            # print(labels)
+            # h = plt.Line2D(range(1), range(1), markeredgecolor=colour,
+            #                linestyle='none',
+            #                marker='o', markersize=5, markeredgewidth=1.0,
+            #                markerfacecolor='none')
+            # handles.append(h)
+            # labels.append(self.name)
+            # ax.legend(handles, labels, numpoints=1, loc='best')
+            # print(labels)
 
             if plot_decorations:
                 # Plot cluster radii, if present
                 if 'cx' in layout and 'cy' in layout and 'cr' in layout:
                     for xy in zip(layout['cx'], layout['cy']):
-                        ax.add_artist(plt.Circle(xy, radius=layout['cr'],
+                        ax.add_artist(Circle(xy, radius=layout['cr'],
                                                  fill=False, color='b',
                                                  alpha=0.5))
                 if 'taper_func' in layout and 'r_max_m' in layout:
@@ -212,7 +257,7 @@ class Telescope(object):
                         r_ = (self.station_diameter_m / 2) / \
                              layout['taper_func'](r[k] / layout['r_max_m'],
                                                   **layout['kwargs'])
-                        ax.add_artist(plt.Circle(xy, r_, fill=False,
+                        ax.add_artist(Circle(xy, r_, fill=False,
                                                  linestyle='-', color='0.5',
                                                  alpha=0.5))
 
@@ -232,7 +277,7 @@ class Telescope(object):
                                      overhang=0, length_includes_head=False)
 
         for r in plot_radii:
-            ax.add_artist(plt.Circle((0, 0), r, fill=False,
+            ax.add_artist(Circle((0, 0), r, fill=False,
                                      color='r', alpha=0.5))
         if plot_r:
             r_max = plot_r
@@ -245,14 +290,15 @@ class Telescope(object):
         else:
             ax.set_ylim(y_lim)
         ax.set_aspect('equal')
-        if filename is not None:
+        if filename is not None and mpl_ax is None:
+            ax.set_ylabel('North (m)')
+            ax.set_xlabel('East (m)')
             fig.savefig(filename)
-        if show:
-            plt.show()
-        if filename is not None or show:
             plt.close(fig)
-        else:
-            return fig
+        if filename is None and mpl_ax is None:
+            plt.show()
+            plt.close(fig)
+        return ax
 
     @staticmethod
     def plot_taper(taper_func, **kwargs):

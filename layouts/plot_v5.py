@@ -3,7 +3,7 @@ from utilities.telescope import Telescope
 tel = Telescope()
 
 # Add all stations out to 6500 m.
-tel.add_ska1_v5(r_min=0,r_max=6500)
+tel.add_ska1_v5(r_min=0, r_max=6500)
 
 # Spiral parameters for inner and outer regions.
 start_inner = 417.82
@@ -25,6 +25,5 @@ tel.add_cluster_centres(5, start_outer, end_outer,
 # tel.add_log_spiral(200, start_outer, end_outer,
 #                    spiral_parameter_outer, 3, 135)
 
-tel.plot_layout(show=True,
-                plot_radii=[start_inner, end_inner, start_outer, end_outer],
-                plot_decorations=True)
+tel.plot_layout(plot_radii=[start_inner, end_inner, start_outer, end_outer],
+                plot_decorations=False)
