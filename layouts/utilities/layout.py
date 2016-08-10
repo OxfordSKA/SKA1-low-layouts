@@ -144,7 +144,7 @@ class Layout(object):
         return tuple(np.random.rand(2) * 2.0 * r - r)
 
     @staticmethod
-    def rand_uniform_2d(n, r_max, min_sep, timeout, r_min=0.0, seed=None):
+    def rand_uniform_2d(n, r_max, min_sep, timeout, r_min=0.0):
         """
         Generate 2d random points with a minimum separation within a radius
         range specified by r_max and r_min.
@@ -161,8 +161,6 @@ class Layout(object):
             tuple (x, y, info)
 
         """
-        if seed:
-            np.random.seed(seed)
         grid_size = min(100, int(ceil(float(r_max * 2.0) / min_sep)))
         grid_cell = float(r_max * 2.0) / grid_size  # Grid sector size
         scale = 1.0 / grid_cell  # Scaling onto the sector grid.
@@ -242,23 +240,22 @@ class Layout(object):
                       'time_taken': time.time() - t0}
 
     @staticmethod
-    def rand_uniform_2d_trials(n, r_max, min_sep, trial_timeout, num_trials=5,
-                               seed=None, r_min=0.0):
-        seed = np.random.randint(1, 1e8) if not seed else seed
+    def rand_uniform_2d_trials(n, r_max, min_sep, trial_timeout, num_trials,
+                               seed0, r_min=0.0):
         max_generated = 0
         all_info = dict()
         t0 = time.time()
         for t in range(num_trials):
-            np.random.seed(seed + t)
+            np.random.seed(seed0 + t)
             x, y, info = Layout.rand_uniform_2d(n, r_max, min_sep,
                                                 trial_timeout, r_min)
             all_info[t] = info
-            all_info[t]['seed'] = seed + t
+            all_info[t]['seed'] = seed0 + t
             all_info[t]['num_generated'] = x.shape[0]
             if x.shape[0] == n:
                 all_info['attempt_id'] = t
                 all_info['total_time'] = time.time() - t0
-                all_info['final_seed'] = seed + t
+                all_info['final_seed'] = seed0 + t
                 return x, y, all_info
             else:
                 max_generated = max(max_generated, x.shape[0])
@@ -315,7 +312,7 @@ class Layout(object):
 
     @staticmethod
     def rand_uniform_2d_tapered_(n, r_max, min_sep, taper_func, timeout, r_min,
-                                 seed, **kwargs):
+                                 **kwargs):
         """
         Generate 2d random points with a minimum separation within a radius
         range specified by r_max and r_min.
@@ -335,10 +332,6 @@ class Layout(object):
             tuple (x, y, info)
 
         """
-        # FIXME(BM) is is set also by the calling function??!
-        if seed:
-            np.random.seed(seed)
-
         # Range of separation of points at the inner and outer generation radius.
         # FIXME(BM) these are an approximation.
         r_min_ = (r_min + (min_sep / 2)) / r_max
@@ -473,16 +466,14 @@ class Layout(object):
         Returns:
             Layout class.
         """
-        # seed0 = np.random.randint(1, 1e8) if not seed0 else seed0
-
+        layout = cls()
         max_generated = 0
         all_info = dict()
         t0 = time.time()
         for t in range(num_trials):
             np.random.seed(seed0 + t)
             x, y, info = Layout.rand_uniform_2d_tapered_(
-                n, r_max, min_sep, taper_func, trial_timeout, r_min, seed0,
-                **kwargs)
+                n, r_max, min_sep, taper_func, trial_timeout, r_min, **kwargs)
             all_info[t] = info
             all_info[t]['seed'] = seed0 + t
             all_info[t]['num_generated'] = x.shape[0]
@@ -490,23 +481,24 @@ class Layout(object):
                 all_info['attempt_id'] = t
                 all_info['total_time'] = time.time() - t0
                 all_info['final_seed'] = seed0 + t
-                cls.x = x
-                cls.y = y
-                cls.info = all_info
-                return
+                layout.x = x
+                layout.y = y
+                layout.info = all_info
+                return layout
             else:
                 max_generated = max(max_generated, x.shape[0])
 
-        cls.info = all_info
+        layout.info = all_info
         raise RuntimeError('Failed to generate enough points. '
                            'max generated: %i / %i.' % (max_generated, n))
 
 
     @staticmethod
     def generate_clusters(num_clusters, n, r_max, min_sep, trail_timeout,
-                          num_trials, seed=None, r_min = 0.0):
+                          num_trials, seed0, r_min = 0.0):
         x_all, y_all, info_all = list(), list(), list()
         for i in range(num_clusters):
+            seed = seed0 + i * num_trials
             x, y, info = Layout.rand_uniform_2d_trials(
                 n, r_max, min_sep, trail_timeout, num_trials, seed, r_min)
             if x.shape[0] != n:

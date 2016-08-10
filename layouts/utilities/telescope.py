@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import os
-from math import log, radians, cos, sin, pi, acosh
+from math import log, radians, cos, sin, pi, acosh, atan2, exp, degrees
 from os.path import join
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import Circle
@@ -82,9 +82,26 @@ class Telescope(object):
         return x, y
 
     @staticmethod
-    def  log_spiral_2(n, r0, r1, theta_max):
-        b = log(r1 / r0) / theta_max
-        return Telescope.log_spiral(n, r0, r1, b)
+    def log_spiral_2(n, r0_ref, r0, r1, b):
+        t_max = log(r1 / r0_ref) / b
+        t_min = log(r0 / r0_ref) / b
+        t_inc = (t_max - t_min) / n
+        # t = np.linspace(t_min, t_max, n)
+        t = np.arange(n) * t_inc + t_min + (t_inc / 2)
+        tmp = r0_ref * np.exp(b * t)
+        x = tmp * np.cos(t)
+        y = tmp * np.sin(t)
+        return x, y
+
+    @staticmethod
+    def r_range_for_centre(cx, cy, r0_ref, delta_theta, b):
+        cr = (cx**2 + cy**2)**0.5
+        theta = log(cr / r0_ref) / b  # Angle to the centre
+        t0 = theta - radians(delta_theta)
+        t1 = theta + radians(delta_theta)
+        r0 = r0_ref * np.exp(b * t0)
+        r1 = r0_ref * np.exp(b * t1)
+        return r0, r1
 
     @staticmethod
     def spiral_to_arms(x, y, num_arms, theta0_deg=0.0):
@@ -94,16 +111,26 @@ class Telescope(object):
                 x[i::num_arms], y[i::num_arms], theta0_deg + delta_theta * i)
         return x, y
 
+    @staticmethod
+    def delta_theta(cx1, cy1, cx2, cy2, r0_ref, b):
+        """cx1, cy1 has to be closer to the origin than cx2, cy2"""
+        r0 = (cx1**2 + cy1**2)**0.5
+        r1 = (cx2**2 + cy2**2)**0.5
+        t_max = log(r1 / r0_ref) / b
+        t_min = log(r0 / r0_ref) / b
+        return degrees(t_max - t_min)
+
     def add_log_spiral(self, n, r0, r1, b, num_arms, theta0_deg=0.0):
         """Add spiral arms by rotating a single spiral of n positions"""
-        x, y = self.log_spiral(n, r0, r1, b)
+        x, y, _ = self.log_spiral(n, r0, r1, b)
         x, y = self.spiral_to_arms(x, y, num_arms, theta0_deg)
         keys = self.layouts.keys()
         self.layouts['spiral_arms' + str(len(keys))] = {'x': x, 'y': y}
 
-    def add_symmetric_log_spiral(self, n, r0, r1, b, num_arms, name, theta0_deg=0.0):
+    def add_symmetric_log_spiral(self, n, r0, r1, b, num_arms, name,
+                                 theta0_deg=0.0):
         """Add symmetric spiral arms."""
-        x, y = self.log_spiral(n, r0, r1, b)
+        x, y, t_max = self.log_spiral(n, r0, r1, b)
         delta_theta = 360 / num_arms
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
@@ -115,8 +142,8 @@ class Telescope(object):
         keys = self.layouts.keys()
         self.layouts[name + str(len(keys))] = {'x': x_final, 'y': y_final}
 
-    def add_log_sprial_section(self, n, r0, r1, theta_max, num_arms, theta0_deg=0.0):
-        x, y = self.log_spiral_2(n, r0, r1, theta_max)
+    def add_log_sprial_section(self, n, r0_ref, r0, r1, b, num_arms, theta0_deg=0.0):
+        x, y = self.log_spiral_2(n, r0_ref, r0, r1, b)
         delta_theta = 360 / num_arms
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
@@ -128,6 +155,23 @@ class Telescope(object):
         keys = self.layouts.keys()
         self.layouts['log_spiral_section' + str(len(keys))] = {
             'x': x_final, 'y': y_final}
+
+    def add_log_sprial_section_2(self, n, r0_ref, cx, cy, b, delta_theta,
+                                 num_arms, theta0_deg=0.0):
+        r0, r1 = self.r_range_for_centre(cx, cy, r0_ref, delta_theta, b)
+        x, y = self.log_spiral_2(n, r0_ref, r0, r1, b)
+        delta_theta = 360 / num_arms
+        x_final = np.zeros(n * num_arms)
+        y_final = np.zeros(n * num_arms)
+        for arm in range(num_arms):
+            x_, y_ = Telescope.rotate_coords(
+                x, y, theta0_deg + delta_theta * arm)
+            x_final[arm * n:(arm + 1) * n] = x_
+            y_final[arm * n:(arm + 1) * n] = y_
+        keys = self.layouts.keys()
+        self.layouts['log_spiral_section' + str(len(keys))] = {
+            'x': x_final, 'y': y_final}
+
 
     def add_log_spiral_clusters(self, num_clusters, num_arms, r0, r1, b,
                                 stations_per_cluster, cluster_radius_m,
