@@ -101,19 +101,19 @@ class Telescope(object):
         keys = self.layouts.keys()
         self.layouts['spiral_arms' + str(len(keys))] = {'x': x, 'y': y}
 
-    def add_cluster_centres(self, n, r0, r1, b, num_arms, theta0_deg=0.0):
-        """Add spiral arms by rotating a single spiral of n positions"""
+    def add_symmetric_log_spiral(self, n, r0, r1, b, num_arms, name, theta0_deg=0.0):
+        """Add symmetric spiral arms."""
         x, y = self.log_spiral(n, r0, r1, b)
         delta_theta = 360 / num_arms
-        x_final = np.zeros(n * 3)
-        y_final = np.zeros(n * 3)
+        x_final = np.zeros(n * num_arms)
+        y_final = np.zeros(n * num_arms)
         for arm in range(num_arms):
             x_, y_ = Telescope.rotate_coords(
                 x, y, theta0_deg + delta_theta * arm)
             x_final[arm * n:(arm + 1) * n] = x_
             y_final[arm * n:(arm + 1) * n] = y_
         keys = self.layouts.keys()
-        self.layouts['cluster_centres' + str(len(keys))] = {'x': x_final, 'y': y_final}
+        self.layouts[name + str(len(keys))] = {'x': x_final, 'y': y_final}
 
     def add_log_sprial_section(self, n, r0, r1, theta_max, num_arms, theta0_deg=0.0):
         x, y = self.log_spiral_2(n, r0, r1, theta_max)
