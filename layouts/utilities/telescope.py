@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import os
-from math import log, radians, cos, sin, pi, acosh, atan2, exp, degrees
+from math import log, radians, cos, sin, pi, acosh, degrees
 from os.path import join
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import Circle
@@ -19,11 +19,12 @@ class Telescope(object):
         self.lat_deg = 0
         self.alt_m = 0
         self.station_diameter_m = 35
-        self.trail_timeout_s = 2.0  # s
+        self.trial_timeout_s = 2.0  # s
         self.num_trials = 5
         self.verbose = False
         self.seed = None
         self.layouts = dict()
+        self.clusters = {'cx': np.array([]), 'cy': np.array([])}
 
     def clear_layouts(self):
         self.layouts.clear()
@@ -45,7 +46,7 @@ class Telescope(object):
             self.seed = np.random.randint(1, 1e8)
         self.layouts['uniform_core'] = generators.uniform_core(
             num_stations, r_max_m, self.station_diameter_m,
-            self.trail_timeout_s, self.num_trials, self.seed,
+            self.trial_timeout_s, self.num_trials, self.seed,
             self.verbose)
 
     def add_tapered_core(self, num_stations, r_max_m, taper_func, **kwargs):
@@ -56,7 +57,7 @@ class Telescope(object):
             layout_ = Layout.rand_tapered_2d_trials(
                 num_stations, r_max=r_max_m, r_min=0.0,
                 min_sep=self.station_diameter_m,
-                trial_timeout=self.trail_timeout_s, num_trials=self.num_trials,
+                trial_timeout=self.trial_timeout_s, num_trials=self.num_trials,
                 seed0=self.seed, taper_func=taper_func, **kwargs)
             self.layouts['tapered_core'] = dict(
                 x=layout_.x, y=layout_.y, info=layout_.info,
@@ -64,6 +65,45 @@ class Telescope(object):
             self.seed = layout_.info['final_seed']
         except RuntimeError as e:
             print('*** ERROR ***:', e.message)
+
+    @staticmethod
+    def cluster_centres_ska_v5(r_min=None, r_max=None):
+        """Generate cluster centres for SKA1 V5 between given radii."""
+        # Spiral parameters for inner and outer regions.
+        num_arms = 3
+        start_inner = 417.82
+        end_inner = 1572.13
+        b_inner = 0.513
+        theta0_inner = -48
+        start_outer = 2146.78
+        end_outer = 6370.13
+        b_outer = 0.52
+        theta0_outer = 135
+        x_inner, y_inner = Telescope.symmetric_log_spiral(
+            5, start_inner, end_inner, b_inner, num_arms, theta0_inner)
+        x_outer, y_outer = Telescope.symmetric_log_spiral(
+            5, start_outer, end_outer, b_outer, num_arms, theta0_outer)
+        x = np.concatenate((x_inner, x_outer))
+        y = np.concatenate((y_inner, y_outer))
+        r = (x**2 + y**2)**0.5
+
+        # Sort by radius and remove the 3 innermost stations.
+        idx = r.argsort()
+        x = x[idx]
+        y = y[idx]
+        r = r[idx]
+        x, y, r = (x[3:], y[3:], r[3:])
+
+        if r_min and r_max:
+            idx = np.where(np.logical_and(r >= r_min, r <= r_max))
+            x, y = x[idx], y[idx]
+        elif r_min:
+            idx = np.where(r >= r_min)
+            x, y = x[idx], y[idx]
+        elif r_max:
+            idx = np.where(r <= r_max)
+            x, y = x[idx], y[idx]
+        return x, y
 
     @staticmethod
     def rotate_coords(x, y, angle):
@@ -94,22 +134,35 @@ class Telescope(object):
         return x, y
 
     @staticmethod
-    def r_range_for_centre(cx, cy, r0_ref, delta_theta, b):
+    def r_range_for_centre(cx, cy, r0_ref, delta_theta_deg, b):
         cr = (cx**2 + cy**2)**0.5
         theta = log(cr / r0_ref) / b  # Angle to the centre
-        t0 = theta - radians(delta_theta)
-        t1 = theta + radians(delta_theta)
+        t0 = theta - radians(delta_theta_deg)
+        t1 = theta + radians(delta_theta_deg)
         r0 = r0_ref * np.exp(b * t0)
         r1 = r0_ref * np.exp(b * t1)
         return r0, r1
 
     @staticmethod
-    def spiral_to_arms(x, y, num_arms, theta0_deg=0.0):
-        delta_theta = 360 / num_arms
+    def spiral_to_arms(x, y, num_arms, theta0_deg):
+        d_theta = 360 / num_arms
         for i in range(num_arms):
             x[i::num_arms], y[i::num_arms] = Telescope.rotate_coords(
-                x[i::num_arms], y[i::num_arms], theta0_deg + delta_theta * i)
+                x[i::num_arms], y[i::num_arms], theta0_deg + d_theta * i)
         return x, y
+
+    @staticmethod
+    def symmetric_log_spiral(n, r0, r1, b, num_arms, theta0_deg):
+        x, y = Telescope.log_spiral(n, r0, r1, b)
+        d_theta = 360 / num_arms
+        x_final = np.zeros(n * num_arms)
+        y_final = np.zeros(n * num_arms)
+        for arm in range(num_arms):
+            x_, y_ = Telescope.rotate_coords(
+                x, y, theta0_deg + d_theta * arm)
+            x_final[arm * n:(arm + 1) * n] = x_
+            y_final[arm * n:(arm + 1) * n] = y_
+        return x_final, y_final
 
     @staticmethod
     def delta_theta(cx1, cy1, cx2, cy2, r0_ref, b):
@@ -122,56 +175,33 @@ class Telescope(object):
 
     def add_log_spiral(self, n, r0, r1, b, num_arms, theta0_deg=0.0):
         """Add spiral arms by rotating a single spiral of n positions"""
-        x, y, _ = self.log_spiral(n, r0, r1, b)
+        x, y = self.log_spiral(n, r0, r1, b)
         x, y = self.spiral_to_arms(x, y, num_arms, theta0_deg)
         keys = self.layouts.keys()
         self.layouts['spiral_arms' + str(len(keys))] = {'x': x, 'y': y}
 
     def add_symmetric_log_spiral(self, n, r0, r1, b, num_arms, name,
-                                 theta0_deg=0.0):
+                                 theta0_deg):
         """Add symmetric spiral arms."""
-        x, y, t_max = self.log_spiral(n, r0, r1, b)
-        delta_theta = 360 / num_arms
-        x_final = np.zeros(n * num_arms)
-        y_final = np.zeros(n * num_arms)
-        for arm in range(num_arms):
-            x_, y_ = Telescope.rotate_coords(
-                x, y, theta0_deg + delta_theta * arm)
-            x_final[arm * n:(arm + 1) * n] = x_
-            y_final[arm * n:(arm + 1) * n] = y_
+        x, y = self.symmetric_log_spiral(n, r0, r1, b, num_arms, theta0_deg)
         keys = self.layouts.keys()
-        self.layouts[name + str(len(keys))] = {'x': x_final, 'y': y_final}
+        self.layouts[name + str(len(keys))] = {'x': x, 'y': y}
 
-    def add_log_sprial_section(self, n, r0_ref, r0, r1, b, num_arms, theta0_deg=0.0):
-        x, y = self.log_spiral_2(n, r0_ref, r0, r1, b)
-        delta_theta = 360 / num_arms
-        x_final = np.zeros(n * num_arms)
-        y_final = np.zeros(n * num_arms)
-        for arm in range(num_arms):
-            x_, y_ = Telescope.rotate_coords(
-                x, y, theta0_deg + delta_theta * arm)
-            x_final[arm * n:(arm + 1) * n] = x_
-            y_final[arm * n:(arm + 1) * n] = y_
-        keys = self.layouts.keys()
-        self.layouts['log_spiral_section' + str(len(keys))] = {
-            'x': x_final, 'y': y_final}
-
-    def add_log_sprial_section_2(self, n, r0_ref, cx, cy, b, delta_theta,
-                                 num_arms, theta0_deg=0.0):
+    def add_log_spiral_section(self, n, r0_ref, cx, cy, b, delta_theta,
+                               num_arms, theta0_deg):
         r0, r1 = self.r_range_for_centre(cx, cy, r0_ref, delta_theta, b)
         x, y = self.log_spiral_2(n, r0_ref, r0, r1, b)
-        delta_theta = 360 / num_arms
+        d_theta = 360 / num_arms
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
         for arm in range(num_arms):
             x_, y_ = Telescope.rotate_coords(
-                x, y, theta0_deg + delta_theta * arm)
+                x, y, theta0_deg + d_theta * arm)
             x_final[arm * n:(arm + 1) * n] = x_
             y_final[arm * n:(arm + 1) * n] = y_
         keys = self.layouts.keys()
         self.layouts['log_spiral_section' + str(len(keys))] = {
-            'x': x_final, 'y': y_final}
-
+            'x': x_final, 'y': y_final, 'cx': cx, 'cy': cy}
 
     def add_log_spiral_clusters(self, num_clusters, num_arms, r0, r1, b,
                                 stations_per_cluster, cluster_radius_m,
@@ -180,14 +210,14 @@ class Telescope(object):
         Spiral arm positions generated come from a single single ar
         Note: the random number generator respects class variables
           self.seed
-          self.trail_timeout_s
+          self.trial_timeout_s
           self.num_trials
         """
         if self.seed is None:
             self.seed = np.random.randint(1, 1e8)
         x_, y_, info = Layout.generate_clusters(
             num_clusters, stations_per_cluster, cluster_radius_m,
-            self.station_diameter_m, self.trail_timeout_s, self.num_trials,
+            self.station_diameter_m, self.trial_timeout_s, self.num_trials,
             self.seed, r_min=0.0)
 
         cx, cy = self.log_spiral(num_clusters, r0, r1, b)
@@ -204,12 +234,13 @@ class Telescope(object):
                                            'cr': cluster_radius_m}
 
     def add_ska1_v5(self, r_min=None, r_max=None):
-        """Add ska1 v5 layout for r >= r_min and r <= r_max if defined"""
+        """Add SKA1 V5 layout between the given radii."""
+        # Load the station coordinates.
         path = os.path.dirname(os.path.abspath(__file__))
         coords = np.loadtxt(join(path, 'data', 'v5_enu.txt'))
         x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
         r = (x**2 + y**2)**0.5
-        n0 = x.shape[0]
+
         if r_min and r_max:
             idx = np.where(np.logical_and(r >= r_min, r <= r_max))
             x, y, z = x[idx], y[idx], z[idx]
@@ -219,9 +250,27 @@ class Telescope(object):
         elif r_max:
             idx = np.where(r <= r_max)
             x, y, z = x[idx], y[idx], z[idx]
-        self.layouts['ska1_v5'] = {'x': x, 'y': y, 'z': z}
-        n1 = x.shape[0]
-        print('- Ska1 v5 radius filter removed', n0 - n1, 'stations')
+
+        # Get the cluster centres within the given range.
+        cluster_x, cluster_y = Telescope.cluster_centres_ska_v5(r_min, r_max)
+
+        # Loop over clusters and extract stations within a 90 m radius.
+        for cx, cy in zip(cluster_x, cluster_y):
+            dr = ((x - cx)**2 + (y - cy)**2)**0.5
+            idx = np.where(dr <= 90.0)
+            tx, ty, tz = x[idx], y[idx], z[idx]
+            if tx.size > 0:
+                keys = self.layouts.keys()
+                self.layouts['ska1_v5_cluster' + str(len(keys))] = {
+                    'x': tx, 'y': ty, 'z': tz, 'cx': None, 'cy': None}
+                x = np.delete(x, idx)
+                y = np.delete(y, idx)
+                z = np.delete(z, idx)
+
+        if x.size > 0:
+            # Add any remaining stations that were not assigned to a cluster.
+            self.layouts['ska1_v5'] = {'x': x, 'y': y, 'z': z,
+                                       'cx': None, 'cy': None}
 
     def num_stations(self):
         if not self.layouts:
