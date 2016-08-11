@@ -160,7 +160,7 @@ class Telescope(object):
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
         for arm in range(num_arms):
-            x_, y_ = Telescope.rotate_coords(
+            x_, y_ = Layout.rotate_coords(
                 x, y, theta0_deg + d_theta * arm)
             x_final[arm * n:(arm + 1) * n] = x_
             y_final[arm * n:(arm + 1) * n] = y_
@@ -263,7 +263,7 @@ class Telescope(object):
             if tx.size > 0:
                 keys = self.layouts.keys()
                 self.layouts['ska1_v5_cluster' + str(len(keys))] = {
-                    'x': tx, 'y': ty, 'z': tz, 'cx': None, 'cy': None}
+                    'x': tx, 'y': ty, 'z': tz, 'cx': cx, 'cy': cy}
                 x = np.delete(x, idx)
                 y = np.delete(y, idx)
                 z = np.delete(z, idx)
@@ -341,9 +341,10 @@ class Telescope(object):
 
             if show_decorations:
                 # Plot cluster radii, if present
-                if 'cx' in layout and 'cy' in layout and 'cr' in layout:
-                    for xy in zip(layout['cx'], layout['cy']):
-                        ax.add_artist(Circle(xy, radius=layout['cr'],
+                if 'cx' in layout and 'cy' in layout:
+                    radius_ = layout['cr'] if 'cr' in layout else 90
+                    for xy in zip([layout['cx']], [layout['cy']]):
+                        ax.add_artist(Circle(xy, radius=radius_,
                                                  fill=False, color='b',
                                                  alpha=0.5))
                 if 'taper_func' in layout and 'r_max_m' in layout:
