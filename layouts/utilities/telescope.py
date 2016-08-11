@@ -3,12 +3,12 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import os
-from math import log, radians, cos, sin, pi, acosh, atan2, exp, degrees
+from math import log, radians, cos, sin, pi, acosh, atan2, exp, degrees, sqrt, \
+    ceil
 from os.path import join
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import Circle
 import numpy as np
-from . import generators
 from .layout import Layout
 
 
@@ -39,14 +39,14 @@ class Telescope(object):
     def to_oskar_telescope_model(self, filename):
         pass
 
-    def add_uniform_core(self, num_stations, r_max_m):
+    def add_uniform_core(self, num_stations, r_max_m, r_min_m=0):
         """Add uniform random core"""
         if self.seed is None:
             self.seed = np.random.randint(1, 1e8)
-        self.layouts['uniform_core'] = generators.uniform_core(
-            num_stations, r_max_m, self.station_diameter_m,
-            self.trail_timeout_s, self.num_trials, self.seed,
-            self.verbose)
+        layout = Layout(self.seed, self.trail_timeout_s, self.num_trials)
+        layout.uniform_cluster(num_stations, self.station_diameter_m,
+                               r_max_m, r_min_m)
+        self.layouts['uniform_core'] = dict(x=layout.x, y=layout.y)
 
     def add_tapered_core(self, num_stations, r_max_m, taper_func, **kwargs):
         """Add a tapered core"""
@@ -65,12 +65,11 @@ class Telescope(object):
         except RuntimeError as e:
             print('*** ERROR ***:', e.message)
 
-    @staticmethod
-    def rotate_coords(x, y, angle):
-        theta = radians(angle)
-        xr = x * cos(theta) - y * sin(theta)
-        yr = x * sin(theta) + y * cos(theta)
-        return xr, yr
+    def add_hex_core(self, r_max_m, theta0_deg=0.0):
+        """Add hexagonal lattice to the core"""
+        layout = Layout()
+        layout.hex_lattice(self.station_diameter_m, r_max_m, theta0_deg)
+        self.layouts['hex_core'] = dict(x=layout.x, y=layout.y)
 
     @staticmethod
     def log_spiral(n, r0, r1, b):
@@ -107,7 +106,7 @@ class Telescope(object):
     def spiral_to_arms(x, y, num_arms, theta0_deg=0.0):
         delta_theta = 360 / num_arms
         for i in range(num_arms):
-            x[i::num_arms], y[i::num_arms] = Telescope.rotate_coords(
+            x[i::num_arms], y[i::num_arms] = Layout.rotate_coords(
                 x[i::num_arms], y[i::num_arms], theta0_deg + delta_theta * i)
         return x, y
 
@@ -122,7 +121,7 @@ class Telescope(object):
 
     def add_log_spiral(self, n, r0, r1, b, num_arms, theta0_deg=0.0):
         """Add spiral arms by rotating a single spiral of n positions"""
-        x, y, _ = self.log_spiral(n, r0, r1, b)
+        x, y = self.log_spiral(n, r0, r1, b)
         x, y = self.spiral_to_arms(x, y, num_arms, theta0_deg)
         keys = self.layouts.keys()
         self.layouts['spiral_arms' + str(len(keys))] = {'x': x, 'y': y}
@@ -130,12 +129,12 @@ class Telescope(object):
     def add_symmetric_log_spiral(self, n, r0, r1, b, num_arms, name,
                                  theta0_deg=0.0):
         """Add symmetric spiral arms."""
-        x, y, t_max = self.log_spiral(n, r0, r1, b)
+        x, y = self.log_spiral(n, r0, r1, b)
         delta_theta = 360 / num_arms
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
         for arm in range(num_arms):
-            x_, y_ = Telescope.rotate_coords(
+            x_, y_ = Layout.rotate_coords(
                 x, y, theta0_deg + delta_theta * arm)
             x_final[arm * n:(arm + 1) * n] = x_
             y_final[arm * n:(arm + 1) * n] = y_
@@ -148,7 +147,7 @@ class Telescope(object):
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
         for arm in range(num_arms):
-            x_, y_ = Telescope.rotate_coords(
+            x_, y_ = Layout.rotate_coords(
                 x, y, theta0_deg + delta_theta * arm)
             x_final[arm * n:(arm + 1) * n] = x_
             y_final[arm * n:(arm + 1) * n] = y_
@@ -164,14 +163,13 @@ class Telescope(object):
         x_final = np.zeros(n * num_arms)
         y_final = np.zeros(n * num_arms)
         for arm in range(num_arms):
-            x_, y_ = Telescope.rotate_coords(
+            x_, y_ = Layout.rotate_coords(
                 x, y, theta0_deg + delta_theta * arm)
             x_final[arm * n:(arm + 1) * n] = x_
             y_final[arm * n:(arm + 1) * n] = y_
         keys = self.layouts.keys()
         self.layouts['log_spiral_section' + str(len(keys))] = {
             'x': x_final, 'y': y_final}
-
 
     def add_log_spiral_clusters(self, num_clusters, num_arms, r0, r1, b,
                                 stations_per_cluster, cluster_radius_m,
@@ -248,9 +246,9 @@ class Telescope(object):
             i += n0
         return x, y, z
 
-    def plot_layout(self, plot_r=None, filename=None, mpl_ax=None,
-                    plot_decorations=False, plot_radii=[],
-                    x_lim=None, y_lim=None, station_color='k'):
+    def plot(self, filename=None, mpl_ax=None,
+             show_decorations=False, plot_radii=[],
+             x_lim=None, y_lim=None, plot_r=None, color='k'):
         plot_nearest = False
         if not self.layouts:
             raise RuntimeError('No layout defined, nothing to plot!')
@@ -265,7 +263,7 @@ class Telescope(object):
             r = (x_**2 + y_**2)**0.5
             r_max = max(np.max(r), r_max)
 
-            colour = station_color
+            colour = color
             filled = False
             radius = (self.station_diameter_m / 2)
             if 'cluster_centres' in name:
@@ -289,7 +287,7 @@ class Telescope(object):
             # ax.legend(handles, labels, numpoints=1, loc='best')
             # print(labels)
 
-            if plot_decorations:
+            if show_decorations:
                 # Plot cluster radii, if present
                 if 'cx' in layout and 'cy' in layout and 'cr' in layout:
                     for xy in zip(layout['cx'], layout['cy']):
@@ -321,8 +319,10 @@ class Telescope(object):
                                      overhang=0, length_includes_head=False)
 
         for r in plot_radii:
-            ax.add_artist(Circle((0, 0), r, fill=False,
-                                     color='r', alpha=0.5))
+            color = r[1] if isinstance(r, tuple) else 'r'
+            radius = r[0] if isinstance(r, tuple) else r
+            ax.add_artist(plt.Circle((0, 0), radius, fill=False, color=color))
+
         if plot_r:
             r_max = plot_r
         if x_lim is None:

@@ -120,7 +120,24 @@ def test3():
     # set.add_telescope(tel2)
     # set.plot_my_metric()
 
+
+def test4():
+    tel = SKA1_low('ref')
+    tel.add_ska1_v5(r_max=1700)
+    tel.uv_hist(num_bins=50, log_bins=False, bar=True)
+    tel.uv_sensitivity(num_bins=50, log_bins=False)
+
+
+def test5():
+    tel = SKA1_low('ref')
+    # tel.add_hex_core(300, theta0_deg=60)
+    tel.add_uniform_core(10, 500)
+    tel.plot_layout(plot_radii=[300])
+
+
 if __name__ == '__main__':
     # test1()
     # test2()
-    test3()
+    # test3()
+    # test4()
+    test5()

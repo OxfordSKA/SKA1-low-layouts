@@ -10,6 +10,7 @@ import numpy as np
 import os
 from os.path import join
 from . import telescope
+from . import sensitivity
 from pyuvwsim import evaluate_baseline_uvw_ha_dec, convert_enu_to_ecef
 from math import pi, radians, degrees, ceil, asin, sin, log10, floor, sqrt
 from oskar.imager import Imager
@@ -28,6 +29,7 @@ class TelescopeAnalysis(telescope.Telescope):
         self.dec_deg = 0
         self.grid_cell_size_m = self.station_diameter_m
         self.freq_hz = 100e6
+        self.bandwidth_hz = 100e3
         self.obs_length_h = 0
         self.num_times = 1
         self.uu_m = None
@@ -177,6 +179,7 @@ class TelescopeAnalysis(telescope.Telescope):
 
         self.hist_n, _ = np.histogram(self.r_uv_m, bins=bins, density=False)
         self.hist_x = (bins[1:] + bins[:-1]) / 2
+        self.hist_bins = bins
 
         if make_plot:
             fig, ax = plt.subplots(figsize=(8, 8))
@@ -201,18 +204,32 @@ class TelescopeAnalysis(telescope.Telescope):
         if self.hist_n is None:
             self.uv_hist(num_bins, b_min, b_max, log_bins=log_bins,
                          make_plot=False)
+        t_int = self.obs_length_h * 3600 if self.obs_length_h > 0 else 1
+        b_max = self.r_uv_m.max() if b_max is None else b_max
+        beam_solid_angle, _ = sensitivity.beam_solid_angle(self.freq_hz, b_max)
+        sigma_t = sensitivity.brightness_temperature_sensitivity(
+            self.freq_hz, beam_solid_angle, t_int,
+            self.bandwidth_hz)
+        print(sigma_t)
+        # TODO(BM) check that the sum of hist n == number of baselines
+        #  --- ie that the telescope is normalised correctly.
+        bar = False
+        fig, ax = plt.subplots(figsize=(8, 8))
+        y = sigma_t / np.sqrt(self.hist_n)
+        if bar:
+            ax.bar(self.hist_x, y, width=np.diff(self.hist_bins),
+                   alpha=0.8, align='center', lw=0.5)
+        else:
+            ax.plot(self.hist_x, y)
+        if log_bins:
+            ax.set_xscale('log')
+        ax.set_xlabel('baseline length (m)')
+        ax.set_ylabel('Brightness sensitivity (K)')
+        ax.set_yscale('log')
+        ax.set_xlim(0, b_max * 1.1)
+        plt.show()
+        plt.close(fig)
 
-        # t_sys = 1000.0  # System temperature, in K
-        # a_eff = 1.0  # station effective area in m^2
-
-        # sigma_pq = 2 * const.k_B.value * t_sys / (a_eff * sqrt(tau_s * bw_hz)
-        # omega = 1.0  # beam solid angle.
-        # Brightness temp (see lofar sensitivity doc section 1.6)
-        # sigma_t = (sigma_pq / omega) * (const.c.value**2 / (2 * const.k_B.value * freq_hz**2)
-
-        # Per baseline brightness temperature
-        # self.hist_n
-        # self.hist_x
 
     def network_graph(self):
         x, y, _ = self.get_coords_enu()

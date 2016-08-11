@@ -2,18 +2,34 @@
 
 from __future__ import (print_function, division, absolute_import,
                         unicode_literals)
-import math
-from math import ceil
-import time
-import numpy as np
+
 import sys
+import time
+from math import sqrt, ceil, radians, cos, sin
+
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+import matplotlib.patches as patches
+import numpy as np
 
 
 class Layout(object):
-    def __init__(self):
+    """Class for generating 2d distributions of points"""
+
+    def __init__(self, seed=None, trail_timeout=2.0, num_trials=5):
         self.x = None
         self.y = None
         self.info = None
+        self.seed = seed
+        self.trial_timeout = trail_timeout
+        self.num_trials = num_trials
+        self.poly_mask_path = list()
+
+    def clear(self):
+        self.x = None
+        self.y = None
+        self.info = None
+        self.poly_mask_path = list()
 
     @staticmethod
     def rotate_coords(x, y, angle):
@@ -27,10 +43,49 @@ class Layout(object):
             (x, y) tuple of rotated coordinates
 
         """
-        theta = math.radians(angle)
+        theta = radians(angle)
         xr = x * np.cos(theta) - y * np.sin(theta)
         yr = x * np.sin(theta) + y * np.cos(theta)
         return xr, yr
+
+    @staticmethod
+    def polygon_vertices_(num_sides, radius, theta_0_deg):
+        """Return polygon vertices on a circumscribed circle of given radius"""
+        angles = np.arange(0, 360, 360 / num_sides) + theta_0_deg
+        x = radius * np.cos(np.radians(angles))
+        y = radius * np.sin(np.radians(angles))
+        x = np.append(x, 0.0)
+        y = np.append(y, 0.0)
+        codes = [Path.MOVETO]
+        for i in range(num_sides - 1):
+            codes.append(Path.LINETO)
+        codes.append(Path.CLOSEPOLY)
+        return np.array(zip(x, y)), codes
+
+    def apply_poly_mask(self, num_sides, radius, theta_0_deg=0, invert=False,
+                        pad_radius=0):
+        """Remove data points outside polygonal mask
+
+        The pad radius can be used to exclude points this distance from the
+        edge of the polygon
+        """
+        verts, codes = Layout.polygon_vertices_(num_sides, radius - pad_radius,
+                                                theta_0_deg)
+        points = np.vstack((self.x, self.y)).T
+        path = Path(verts, codes=codes)
+        mask_idx = path.contains_points(points)
+        if invert:
+            mask_idx = np.invert(mask_idx)
+        self.x = self.x[mask_idx]
+        self.y = self.y[mask_idx]
+        if pad_radius != 0:
+            verts, codes = Layout.polygon_vertices_(num_sides, radius,
+                                                    theta_0_deg)
+            path = Path(verts, codes=codes)
+        self.poly_mask_path.append(path)
+
+
+
 
     @staticmethod
     def log_spiral_1(r0, b, delta_theta_deg, n):
@@ -492,7 +547,6 @@ class Layout(object):
         raise RuntimeError('Failed to generate enough points. '
                            'max generated: %i / %i.' % (max_generated, n))
 
-
     @staticmethod
     def generate_clusters(num_clusters, n, r_max, min_sep, trail_timeout,
                           num_trials, seed0, r_min = 0.0):
@@ -507,3 +561,58 @@ class Layout(object):
             y_all.append(y)
             info_all.append(info)
         return x_all, y_all, info_all
+
+    def uniform_cluster(self, num_points, min_sep, r_max, r_min):
+        """Generate a uniform random cluster (core) of points"""
+        if self.seed is None:
+            self.seed = np.random.randint(1, 1e8)
+        x, y, _ = self.rand_uniform_2d_trials(
+            num_points, r_max, min_sep, self.trial_timeout,
+            self.num_trials, self.seed, r_min)
+        if not x.size == num_points:
+            raise RuntimeError('Failed to generate enough points')
+        self.x = x
+        self.y = y
+
+    def hex_lattice(self, separation, r_max, theta0_deg=0.0):
+        n = int(ceil(r_max * 3 / separation))
+        w = separation
+        h = w * sqrt(3) / 2
+        x = np.zeros((n, n))
+        y = np.zeros((n, n))
+        for j in range(n):
+            for i in range(n):
+                x[j, i] = (i + 0.5 * j) * w
+                y[j, i] = j * h
+        x -= x[n // 2, n // 2]
+        y -= y[n // 2, n // 2]
+        x = x.flatten()
+        y = y.flatten()
+        x, y = Layout.rotate_coords(x, y, theta0_deg)
+        r = (x**2 + y**2)**0.5
+        idx = np.where(r <= (r_max - separation / 2))[0]
+        self.x = x[idx]
+        self.y = y[idx]
+
+    def plot(self, plot_radius=None, plot_radii=[]):
+        if self.x is None or self.y is None:
+            return
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.set_aspect('equal')
+        ax.plot(self.x, self.y, 'k+')
+
+        for r in plot_radii:
+            color = r[1] if isinstance(r, tuple) else 'r'
+            radius = r[0] if isinstance(r, tuple) else r
+            ax.add_artist(plt.Circle((0, 0), radius, fill=False, color=color))
+
+        for path in self.poly_mask_path:
+            patch = patches.PathPatch(path, facecolor='None', lw=1)
+            ax.add_patch(patch)
+
+        if plot_radius:
+            ax.set_xlim(-plot_radius, plot_radius)
+            ax.set_ylim(-plot_radius, plot_radius)
+
+        plt.show()
+        plt.close(fig)

@@ -78,7 +78,6 @@ def brightness_temperature_sensitivity(freq_hz, beam_solid_angle, t_acc=5,
     sigma_s = flux_sensitivity(freq_hz, t_acc, bw_hz, num_antennas, eta, t_sys,
                                a_eff)
     factor = (1e-26 * const.c.value**2) / (2 * const.k_B.value * freq_hz**2)
-    print('...', sigma_s, factor, beam_solid_angle)
     sigma_t = (sigma_s / beam_solid_angle) * factor
     return sigma_t
 
