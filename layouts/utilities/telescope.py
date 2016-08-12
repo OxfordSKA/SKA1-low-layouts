@@ -141,6 +141,14 @@ class Telescope(object):
         return x, y
 
     @staticmethod
+    def circular_arc(n, r, delta_theta):
+        t_inc = delta_theta / n
+        t = np.arange(n) * t_inc - delta_theta / 2 + (t_inc / 2)
+        x = r * np.cos(np.radians(t))
+        y = r * np.sin(np.radians(t))
+        return x, y
+
+    @staticmethod
     def r_range_for_centre(cx, cy, r0_ref, delta_theta_deg, b):
         cr = (cx**2 + cy**2)**0.5
         theta = log(cr / r0_ref) / b  # Angle to the centre
@@ -194,20 +202,23 @@ class Telescope(object):
         keys = self.layouts.keys()
         self.layouts[name + str(len(keys))] = {'x': x, 'y': y}
 
+    def add_circular_arc(self, n, cx, cy, delta_theta):
+        r = (cx**2 + cy**2)**0.5
+        t = degrees(atan2(cy, cx))
+        x, y = self.circular_arc(n, r, delta_theta)
+        x, y = Layout.rotate_coords(x, y, t)
+        keys = self.layouts.keys()
+        self.layouts['circular_arc' + str(len(keys))] = {
+            'x': x, 'y': y, 'cx': cx, 'cy': cy}
+
     def add_log_spiral_section(self, n, r0_ref, cx, cy, b, delta_theta,
-                               num_arms, theta0_deg):
+                               theta0_deg):
         r0, r1 = self.r_range_for_centre(cx, cy, r0_ref, delta_theta, b)
         x, y = self.log_spiral_2(n, r0_ref, r0, r1, b)
-        d_theta = 360 / num_arms
-        x_final = np.zeros(n * num_arms)
-        y_final = np.zeros(n * num_arms)
-        for arm in range(num_arms):
-            x_, y_ = Layout.rotate_coords(x, y, theta0_deg + d_theta * arm)
-            x_final[arm * n:(arm + 1) * n] = x_
-            y_final[arm * n:(arm + 1) * n] = y_
+        x, y = Layout.rotate_coords(x, y, theta0_deg)
         keys = self.layouts.keys()
         self.layouts['log_spiral_section' + str(len(keys))] = {
-            'x': x_final, 'y': y_final, 'cx': cx, 'cy': cy}
+            'x': x, 'y': y, 'cx': cx, 'cy': cy}
 
     def add_log_spiral_clusters(self, num_clusters, num_arms, r0, r1, b,
                                 stations_per_cluster, cluster_radius_m,

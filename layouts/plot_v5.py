@@ -53,11 +53,11 @@ def test2():
 
     tel2 = Telescope()
     tel2.add_log_spiral_section(6, start_inner, cx1, cy1, b, delta_t / 2,
-                                num_arms, theta0)
+                                theta0)
 
     tel3 = Telescope()
     tel3.add_log_spiral_section(6, start_inner, cx2, cy2, b, delta_t / 2,
-                                num_arms, theta0)
+                                theta0)
 
     fig, ax = plt.subplots(figsize=(8, 8))
     tel2.plot_layout(mpl_ax=ax, color='g')
@@ -107,8 +107,10 @@ def test3():
                 tel1.add_log_spiral_section(
                     6, start_inner,
                     cluster_x[idx], cluster_y[idx],
-                    b, delta_theta_deg / 2.0, 1,
+                    b, delta_theta_deg / 2.0,
                     theta0_deg + arm_index[idx] * d_theta)
+                tel1.add_circular_arc(
+                    6, cluster_x[idx], cluster_y[idx], d_theta)
         # NOTE(BM) Telescope exists here ... add metrics
         tel1.plot_layout(plot_radii=[500, 6400], color='k', show_decorations=True)
 

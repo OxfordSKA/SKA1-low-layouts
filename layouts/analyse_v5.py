@@ -56,7 +56,7 @@ def main():
                 tel1.add_log_spiral_section(
                     6, start_inner,
                     cluster_x[idx], cluster_y[idx],
-                    b, delta_theta_deg / 2.0, 1,
+                    b, delta_theta_deg / 2.0,
                     theta0_deg + arm_index[idx] * d_theta)
         # tel1.plot_layout(plot_radii=[500, 6400], color='k',
         #                  show_decorations=True,
