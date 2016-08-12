@@ -22,16 +22,17 @@ if __name__ == '__main__':
     tel = Telescope('test')
     tel.add_hex_core(200, 0.0)
     tel.add_uniform_core(180, 400, 200)
-    tel.plot_layout(plot_radii=[200, 400])
+    # tel.plot_layout(plot_radii=[200, 400])
+    tel.save('HEX_layout.txt')
 
-    # Spiral arms
-    tel = Telescope('test')
-    tel.add_log_spiral(n=3*10, r0=100, r1=400, b=0.5, num_arms=3, theta0_deg=0)
-    tel.plot_layout(plot_radii=[100, 400])
-
-    # Symmetric spiral arms
-    tel = Telescope('test')
-    tel.add_symmetric_log_spiral(n=10, r0=100, r1=400, b=0.5, num_arms=3,
-                                 name='foo', theta0_deg=0)
-    tel.plot_layout(plot_radii=[100, (400, 'b')], color='g')
+    # # Spiral arms
+    # tel = Telescope('test')
+    # tel.add_log_spiral(n=3*10, r0=100, r1=400, b=0.5, num_arms=3, theta0_deg=0)
+    # tel.plot_layout(plot_radii=[100, 400])
+    #
+    # # Symmetric spiral arms
+    # tel = Telescope('test')
+    # tel.add_symmetric_log_spiral(n=10, r0=100, r1=400, b=0.5, num_arms=3,
+    #                              name='foo', theta0_deg=0)
+    # tel.plot_layout(plot_radii=[100, (400, 'b')], color='g')
 
