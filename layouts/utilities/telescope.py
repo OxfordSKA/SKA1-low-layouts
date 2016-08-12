@@ -31,12 +31,11 @@ class Telescope(object):
         self.layouts.clear()
 
     def save(self, filename):
-        """save the telescope model as an npz file"""
-        pass
-
-    def load(self, filename):
-        """save the telescope model as an npz file"""
-        pass
+        """Save the telescope model as ascii CSV file."""
+        x, y, z = self.get_coords_enu()
+        coords = np.vstack([x, y, z]).T
+        print(coords.shape)
+        np.savetxt(filename, coords, fmt=b'%.12e,%.12e,%.12e')
 
     def to_oskar_telescope_model(self, filename):
         pass
@@ -45,7 +44,7 @@ class Telescope(object):
         """Add uniform random core"""
         if self.seed is None:
             self.seed = np.random.randint(1, 1e8)
-        layout = Layout(self.seed, self.trail_timeout_s, self.num_trials)
+        layout = Layout(self.seed, self.trial_timeout_s, self.num_trials)
         layout.uniform_cluster(num_stations, self.station_diameter_m,
                                r_max_m, r_min_m)
         self.layouts['uniform_core'] = dict(x=layout.x, y=layout.y)
