@@ -298,9 +298,9 @@ class Telescope(object):
             i += n0
         return x, y, z
 
-    def plot(self, filename=None, mpl_ax=None,
-             show_decorations=False, plot_radii=[],
-             x_lim=None, y_lim=None, plot_r=None, color='k'):
+    def plot_layout(self, filename=None, mpl_ax=None,
+                    show_decorations=False, plot_radii=[],
+                    x_lim=None, y_lim=None, plot_r=None, color='k'):
         plot_nearest = False
         if not self.layouts:
             raise RuntimeError('No layout defined, nothing to plot!')
@@ -415,6 +415,13 @@ class Telescope(object):
         ax.set_ylabel('Minimum separation (m)')
         plt.show()
         plt.close(fig)
+
+
+class SKA1_low(Telescope):
+    def __init__(self, name=''):
+        Telescope.__init__(self, name)
+        self.lon_deg = 116.63128900
+        self.lat_deg = -26.69702400
 
 
 def taylor_win(n, sll):

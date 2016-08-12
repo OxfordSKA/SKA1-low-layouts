@@ -238,13 +238,16 @@ class TelescopeAnalysis(telescope.Telescope):
         self.tree_length = np.sum(self.tree)
 
     def plot_network(self):
+        if self.tree is None:
+            self.network_graph()
         x, y, _ = self.get_coords_enu()
-        fig = self.plot_layout()
-        ax = fig.gca()
+        fig, ax = plt.subplots()
+        self.plot_layout(mpl_ax=ax)
         for i in range(y.size):
             for j in range(x.size):
                 if self.tree[i, j] > 0:
-                    ax.plot([x[i], x[j]], [y[i], y[j]], 'g-', alpha=0.5, lw=1.0)
+                    ax.plot([x[i], x[j]], [y[i], y[j]], 'g-', alpha=0.5,
+                                   lw=1.0)
         plt.show()
         plt.close(fig)
 
@@ -397,18 +400,56 @@ class TelescopeAnalysis(telescope.Telescope):
             plt.close(fig)
 
     def cable_cost(self):
-        pass
+        cluster_cable_length = 0.0
+        fig, ax = plt.subplots()
+        ax.set_aspect('equal')
+        spiral_id = 0
+        for key in self.layouts.keys():
+            print('%-20s' % key, end=' ')
+            if key == 'ska1_v5':
+                print(': CORE')
+                layout = self.layouts[key]
+                ax.plot(layout['x'], layout['y'], 'k+')
+                ax.add_artist(plt.Circle((0, 0), 500, fill=False, color='r'))
+            elif 'log_spiral_section' in key:
+                print(': SPIRAL')
+                if spiral_id == 0:
+                    layout = self.layouts[key]
+                    cx, cy = (layout['cx'], layout['cy'])
+                    x, y = (layout['x'], layout['y'])
+                    ax.plot(x, y, 'b+')
+                    ax.plot(cx, cy, 'rx', lw=2, ms=5)
+                    cable_length = 0.0
+                    for x_, y_ in zip(x, y):
+                        ax.plot([x_, cx], [y_, cy], 'k--', alpha=0.5)
+                    # ax.add_artist(plt.Circle((0, 0), 500, fill=False, color='y'))
+                spiral_id += 1
+            else:
+                print(': CLUSTER')
+                continue
+                layout = self.layouts[key]
+                cx, cy = (layout['cx'], layout['cy'])
+                x, y = (layout['x'], layout['y'])
+                ax.plot(x, y, 'b+', mew=1.5)
+                ax.plot(cx, cy, 'ro', mew=1.5, mec='None')
+                cluster_total = 0.0
+                for x_, y_ in zip(x, y):
+                    dx = x_ - cx
+                    dy = y_ - cy
+                    r = (dx**2 + dy**2)**0.5
+                    cluster_total += r
+                    ax.plot([x_, cx], [y_, cy], 'k--', alpha=0.5)
+                ax.text(cx, cy + self.station_diameter_m / 2,
+                        '%.1f' % cluster_total, fontsize='small')
+                cluster_cable_length += cluster_total
+        plt.show()
+        plt.close(fig)
+        print('cluster cable length:', cluster_cable_length)
 
 
-class SKA1_v5(TelescopeAnalysis):
+class SKA1_low_analysis(TelescopeAnalysis):
     def __init__(self, name=''):
         TelescopeAnalysis.__init__(self, name)
-        self.add_ska1_v5()
         self.lon_deg = 116.63128900
         self.lat_deg = -26.69702400
 
-class SKA1_low(TelescopeAnalysis):
-    def __init__(self, name=''):
-        TelescopeAnalysis.__init__(self, name)
-        self.lon_deg = 116.63128900
-        self.lat_deg = -26.69702400

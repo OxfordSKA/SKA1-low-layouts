@@ -72,7 +72,7 @@ def test3():
     # Current SKA1 V5 design.
     tel = Telescope()
     tel.add_ska1_v5(None, 6400)
-    tel.plot(plot_radii=[500, 6400], color='k')
+    tel.plot_layout(plot_radii=[500, 6400], color='k')
 
     # Generate new telescopes by expanding each station cluster.
     b = 0.515
@@ -107,7 +107,7 @@ def test3():
                     cluster_x[num_arms*j + k], cluster_y[num_arms*j + k],
                     b, delta_theta_deg / 3.0, 1, theta0_deg + k * d_theta)
         # NOTE(BM) Telescope exists here ... add metrics
-        tel1.plot(plot_radii=[500, 6400], color='k', show_decorations=True)
+        tel1.plot_layout(plot_radii=[500, 6400], color='k', show_decorations=True)
 
 
 
