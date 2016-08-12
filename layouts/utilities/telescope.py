@@ -79,6 +79,7 @@ class Telescope(object):
         """Generate cluster centres for SKA1 V5 between given radii."""
         # Spiral parameters for inner and outer regions.
         num_arms = 3
+        num_per_arm = 5
         start_inner = 417.82
         end_inner = 1572.13
         b_inner = 0.513
@@ -88,30 +89,35 @@ class Telescope(object):
         b_outer = 0.52
         theta0_outer = 135
         x_inner, y_inner = Telescope.symmetric_log_spiral(
-            5, start_inner, end_inner, b_inner, num_arms, theta0_inner)
+            num_per_arm, start_inner, end_inner, b_inner, num_arms,
+            theta0_inner)
         x_outer, y_outer = Telescope.symmetric_log_spiral(
-            5, start_outer, end_outer, b_outer, num_arms, theta0_outer)
+            num_per_arm, start_outer, end_outer, b_outer, num_arms,
+            theta0_outer)
         x = np.concatenate((x_inner, x_outer))
         y = np.concatenate((y_inner, y_outer))
         r = (x**2 + y**2)**0.5
+        arm_index = [i // num_per_arm for i in range(num_per_arm * num_arms)]
+        arm_index = np.hstack((arm_index, arm_index))
 
         # Sort by radius and remove the 3 innermost stations.
         idx = r.argsort()
         x = x[idx]
         y = y[idx]
         r = r[idx]
-        x, y, r = (x[3:], y[3:], r[3:])
+        arm_index = arm_index[idx]
+        x, y, r, arm_index = (x[3:], y[3:], r[3:], arm_index[3:])
 
         if r_min and r_max:
             idx = np.where(np.logical_and(r >= r_min, r <= r_max))
-            x, y = x[idx], y[idx]
+            x, y, arm_index = x[idx], y[idx], arm_index[idx]
         elif r_min:
             idx = np.where(r >= r_min)
-            x, y = x[idx], y[idx]
+            x, y, arm_index = x[idx], y[idx], arm_index[idx]
         elif r_max:
             idx = np.where(r <= r_max)
-            x, y = x[idx], y[idx]
-        return x, y
+            x, y, arm_index = x[idx], y[idx], arm_index[idx]
+        return x, y, arm_index
 
 
     @staticmethod
@@ -150,7 +156,7 @@ class Telescope(object):
         d_theta = 360 / num_arms
         for i in range(num_arms):
             x[i::num_arms], y[i::num_arms] = Layout.rotate_coords(
-                x[i::num_arms], y[i::num_arms], theta0_deg + delta_theta * i)
+                x[i::num_arms], y[i::num_arms], theta0_deg + d_theta * i)
         return x, y
 
     @staticmethod
@@ -253,7 +259,8 @@ class Telescope(object):
             x, y, z = x[idx], y[idx], z[idx]
 
         # Get the cluster centres within the given range.
-        cluster_x, cluster_y = Telescope.cluster_centres_ska_v5(r_min, r_max)
+        cluster_x, cluster_y, _ = \
+            Telescope.cluster_centres_ska_v5(r_min, r_max)
 
         # Loop over clusters and extract stations within a 90 m radius.
         for cx, cy in zip(cluster_x, cluster_y):

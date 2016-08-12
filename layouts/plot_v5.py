@@ -30,7 +30,7 @@ def test1():
                                  3, 'spiral_arms', -48)
 
     tel.plot_layout(plot_radii=[start_inner, end_inner, start_outer, end_outer],
-                    plot_decorations=False)
+                    show_decorations=False)
 
 
 def test2():
@@ -40,7 +40,7 @@ def test2():
 
     b = 0.515
     theta0 = -40
-    num_arms = 3
+    num_arms = 1
     tel1 = Telescope()
     tel1.add_symmetric_log_spiral(10, start_inner, end_outer, b,
                                   num_arms, 'spiral_arms', theta0)
@@ -60,11 +60,12 @@ def test2():
                                 num_arms, theta0)
 
     fig, ax = plt.subplots(figsize=(8, 8))
-    tel2.plot_layout(mpl_ax=ax, station_color='g')
-    tel3.plot_layout(mpl_ax=ax, station_color='y')
+    tel2.plot_layout(mpl_ax=ax, color='g')
+    tel3.plot_layout(mpl_ax=ax, color='y')
     tel1.station_diameter_m = 50
     tel1.plot_layout(plot_radii=[start_inner, end_outer],
-                     mpl_ax=ax, station_color='r')
+                     mpl_ax=ax, color='r')
+    ax.plot([cx1], [cy1], '+', ms=10)
     plt.show()
 
 
@@ -82,7 +83,7 @@ def test3():
     d_theta = 360 / num_arms
 
     # Get cluster radii.
-    cluster_x, cluster_y = Telescope.cluster_centres_ska_v5(0, 6400)
+    cluster_x, cluster_y, arm_index = Telescope.cluster_centres_ska_v5(0, 6400)
     cluster_r = (cluster_x**2 + cluster_y**2)**0.5
     cluster_r = cluster_r[::3] # Get every 3rd radius.
     delta_theta_deg = Telescope.delta_theta(
@@ -102,10 +103,12 @@ def test3():
         # Add spiral sections up to this radius.
         for j in range(i + 1):
             for k in range(num_arms):
+                idx = num_arms * j + k
                 tel1.add_log_spiral_section(
                     6, start_inner,
-                    cluster_x[num_arms*j + k], cluster_y[num_arms*j + k],
-                    b, delta_theta_deg / 3.0, 1, theta0_deg + k * d_theta)
+                    cluster_x[idx], cluster_y[idx],
+                    b, delta_theta_deg / 2.0, 1,
+                    theta0_deg + arm_index[idx] * d_theta)
         # NOTE(BM) Telescope exists here ... add metrics
         tel1.plot_layout(plot_radii=[500, 6400], color='k', show_decorations=True)
 

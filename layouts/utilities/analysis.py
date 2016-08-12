@@ -413,17 +413,17 @@ class TelescopeAnalysis(telescope.Telescope):
                 ax.add_artist(plt.Circle((0, 0), 500, fill=False, color='r'))
             elif 'log_spiral_section' in key:
                 print(': SPIRAL')
-                if spiral_id == 0:
-                    layout = self.layouts[key]
-                    cx, cy = (layout['cx'], layout['cy'])
-                    x, y = (layout['x'], layout['y'])
-                    ax.plot(x, y, 'b+')
-                    ax.plot(cx, cy, 'rx', lw=2, ms=5)
-                    cable_length = 0.0
-                    for x_, y_ in zip(x, y):
-                        ax.plot([x_, cx], [y_, cy], 'k--', alpha=0.5)
-                    # ax.add_artist(plt.Circle((0, 0), 500, fill=False, color='y'))
-                spiral_id += 1
+                #if spiral_id == 0:
+                layout = self.layouts[key]
+                cx, cy = (layout['cx'], layout['cy'])
+                x, y = (layout['x'], layout['y'])
+                ax.plot(x, y, 'b+')
+                ax.plot(cx, cy, 'rx', lw=2, ms=5)
+                cable_length = 0.0
+                for x_, y_ in zip(x, y):
+                    ax.plot([x_, cx], [y_, cy], 'k--', alpha=0.5)
+                # ax.add_artist(plt.Circle((0, 0), 500, fill=False, color='y'))
+                #spiral_id += 1
             else:
                 print(': CLUSTER')
                 continue
